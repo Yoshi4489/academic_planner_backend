@@ -12,7 +12,9 @@
     "build": "tsc"
   },
   "dependencies": {
-    "express": "^5.2.1"
+    "@prisma/client": "^7.6.0",
+    "express": "^5.2.1",
+    "prisma": "^7.6.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

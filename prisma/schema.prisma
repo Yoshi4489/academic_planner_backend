@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Grade {
+  A
+  B_PLUS
+  B
+  C_PLUS
+  C
+  D_PLUS
+  D
+  F
+}
+
+enum Plan {
+  PLAN
+  ACTUAL
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  password   String
+  email      String   @unique
+  created_at DateTime @default(now())
+
+  goals     Goal[]
+  semesters Semester[]
+  gpa       GPA[]
+  chat_logs ChatLog[]
+}
+
+model Semester {
+  id            String   @id @default(uuid())
+  semester_year Int
+  term          String
+  is_complete   Boolean
+  created_at    DateTime @default(now())
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+
+  courses Course[]
+  gpas    GPA[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  name        String
+  grade       Grade
+  grade_point Float?
+  credit      Int
+  type        Plan
+  created_at  DateTime @default(now())
+
+  semester_id String
+  semester    Semester @relation(fields: [semester_id], references: [id])
+}
+
+model GPA {
+  user_id       String
+  semester_id   String
+  gpa           Float
+  cum_gpa       Float
+  calculated_at DateTime @default(now())
+
+  user     User     @relation(fields: [user_id], references: [id])
+  semester Semester @relation(fields: [semester_id], references: [id])
+
+  @@id([user_id, semester_id])
+}
+
+model Goal {
+  id              String @id @default(uuid())
+  target_gpa      Float
+  target_semester String
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+}
+
+model ChatLog {
+  id          String   @id @default(uuid())
+  input_data  String
+  ai_response String
+  created_at  DateTime @default(now())
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+}
