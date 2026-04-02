@@ -6,7 +6,7 @@ import {
   registerUser,
 } from "../services/auth.services.js";
 
-const handleRegister = async (
+export const handleRegister = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -18,15 +18,19 @@ const handleRegister = async (
       throw createHttpError.BadRequest("Name, email and password are required");
     }
 
-    const user = await registerUser(name, password, email);
+    const { user, token } = await registerUser(name, password, email);
 
-    return res.status(201).json(user);
+    return res.status(201).json({
+      message: "User registered successfully",
+      user,
+      token
+    });
   } catch (error) {
     next(error);
   }
 };
 
-const handleLogin = async (req: Request, res: Response, next: NextFunction) => {
+export const handleLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
@@ -34,15 +38,19 @@ const handleLogin = async (req: Request, res: Response, next: NextFunction) => {
       throw createHttpError.BadRequest("Email and password are required");
     }
 
-    const user = await loginUser(email, password);
+    const { user, token } = await loginUser(email, password);
 
-    return res.status(200).json(user);
+    return res.status(200).json({
+      message: "Login successful",
+      user,
+      token
+    });
   } catch (error) {
     next(error);
   }
 };
 
-const handleGetUsers = async (
+export const handleGetUsers = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -52,7 +60,10 @@ const handleGetUsers = async (
 
     const users = await getUsers(id as string, name as string, email as string);
 
-    return res.status(200).json(users);
+    return res.status(200).json({
+      message: "Users retrieved successfully",
+      users,
+    });
   } catch (error) {
     next(error);
   }
