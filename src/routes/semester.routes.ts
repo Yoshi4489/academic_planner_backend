@@ -15,9 +15,9 @@ semesterRouter.post(
   handleCreateSemester,
 );
 
-semesterRouter.put("/updateSemester", authMiddleware, handleCreateSemester);
+semesterRouter.put("/updateSemester/:id", authMiddleware, handleCreateSemester);
 
-semesterRouter.delete("/deleteSemester", authMiddleware, deleteSemester);
+semesterRouter.delete("/deleteSemester/:id", authMiddleware, deleteSemester);
 
 semesterRouter.get("/getSemesters", authMiddleware, getSemesters);
 
