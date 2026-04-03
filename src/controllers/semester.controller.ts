@@ -3,6 +3,7 @@ import createHttpError from "http-errors";
 import {
   addSemester,
   editSemester,
+  getSemesterById,
   getSemesters,
   removeSemester,
 } from "../services/semester.services";
@@ -61,6 +62,38 @@ export const handleGetSemesters = async (
   }
 };
 
+export const handleGetSemesterById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user || !user.user_id) {
+      throw createHttpError.Unauthorized("Unauthorized");
+    }
+
+    if (id === undefined || Array.isArray(id)) {
+      throw createHttpError.BadRequest("Missing semester id");
+    }
+
+    const semester = await getSemesterById(user.user_id, { id: id as string });
+
+    if (!semester) {
+      throw createHttpError.NotFound("Semester not found");
+    }
+
+    res.status(200).json({
+      message: "Get semester successfully",
+      semester,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const handleUpdateSemester = async (
   req: Request,
   res: Response,
@@ -95,7 +128,7 @@ export const handleUpdateSemester = async (
   }
 };
 
-const handleDeleteSemester = async (
+export const handleDeleteSemester = async (
   req: Request,
   res: Response,
   next: NextFunction,

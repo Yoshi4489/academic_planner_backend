@@ -22,6 +22,23 @@ export const getSemesters = async (data: { user_id: string }) => {
   return semesters;
 };
 
+export const getSemesterById = async (
+  user_id: string,
+  data: {
+    id: string;
+  },
+) => {
+  const semester = await findSemesterById(data);
+
+  if (semester?.user_id !== user_id) {
+    throw createHttpError.Forbidden(
+      "You don't have permission to access this semester",
+    );
+  }
+
+  return semester;
+};
+
 export const editSemester = async (data: {
   id: string;
   user_id: string;

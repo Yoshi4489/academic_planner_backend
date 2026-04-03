@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { authMiddleware } from "../middleware/middleware";
-import { getSemesters } from "../services/semester.services";
-import { handleCreateSemester } from "../controllers/semester.controller";
-import { deleteSemester } from "../repositories/semester.repo";
+import {
+  handleCreateSemester,
+  handleDeleteSemester,
+  handleGetSemesterById,
+  handleGetSemesters,
+  handleUpdateSemester,
+} from "../controllers/semester.controller";
 import { validate } from "../middleware/validate.middleware";
 import { createSemesterSchema } from "../utils/semester.validator";
 
@@ -15,10 +19,16 @@ semesterRouter.post(
   handleCreateSemester,
 );
 
-semesterRouter.put("/updateSemester/:id", authMiddleware, handleCreateSemester);
+semesterRouter.put("/updateSemester/:id", authMiddleware, handleUpdateSemester);
 
-semesterRouter.delete("/deleteSemester/:id", authMiddleware, deleteSemester);
+semesterRouter.delete("/deleteSemester/:id", authMiddleware, handleDeleteSemester);
 
-semesterRouter.get("/getSemesters", authMiddleware, getSemesters);
+semesterRouter.get(
+  "/getSemesterById/:id",
+  authMiddleware,
+  handleGetSemesterById,
+);
+
+semesterRouter.get("/getSemesters", authMiddleware, handleGetSemesters);
 
 export default semesterRouter;
