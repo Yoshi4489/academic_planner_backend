@@ -44,9 +44,9 @@ export const findUsers = async (data: {
 }) => {
   return await prisma.user.findMany({
     where: {
-      id: data.id ?? undefined,
-      name: data.name ?? undefined,
-      email: data.email ?? undefined,
+      ...(data.id !== undefined ? { id: data.id } : {}),
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.email !== undefined ? { email: data.email } : {}),
     },
   });
 };

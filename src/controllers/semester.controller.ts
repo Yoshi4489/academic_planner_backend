@@ -13,7 +13,7 @@ export const handleCreateSemester = async (
   next: NextFunction,
 ) => {
   try {
-    const { semester_year, term, is_complete } = req.body;
+    const { year, term, is_complete } = req.body;
     const user = req.user;
 
     if (!user || !user.user_id) {
@@ -23,7 +23,7 @@ export const handleCreateSemester = async (
     const user_id = user.user_id;
 
     const semester = await addSemester({
-      semester_year,
+      year,
       term,
       is_complete,
       user_id,
@@ -74,7 +74,7 @@ export const handleUpdateSemester = async (
     }
 
     const { id } = req.params;
-    const { semester_year, term, is_complete } = req.body;
+    const { year, term, is_complete } = req.body;
 
     if (id === undefined || Array.isArray(id)) {
       throw createHttpError.BadRequest("Missing semester id");
@@ -83,7 +83,7 @@ export const handleUpdateSemester = async (
     const semester = await editSemester({
       id: id as string,
       user_id: user.user_id,
-      data: { semester_year, term, is_complete },
+      data: { year, term, is_complete },
     });
 
     res.status(200).json({

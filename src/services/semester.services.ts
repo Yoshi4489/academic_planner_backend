@@ -8,7 +8,7 @@ import {
 } from "../repositories/semester.repo.js";
 
 export const addSemester = async (data: {
-  semester_year: number;
+  year: number;
   term: string;
   is_complete: boolean;
   user_id: string;
@@ -25,7 +25,7 @@ export const getSemesters = async (data: { user_id: string }) => {
 export const editSemester = async (data: {
   id: string;
   user_id: string;
-  data: { semester_year?: number; term?: string; is_complete?: boolean };
+  data: { year?: number; term?: string; is_complete?: boolean };
 }) => {
   const isExisted = await findSemesterById({ id: data.id });
 
