@@ -3,7 +3,7 @@ import prisma from "../config/prisma.js";
 export const createSemester = async (data: {
   semester_year: number;
   term: string;
-  is_completed: boolean;
+  is_complete: boolean;
   user_id: string;
 }) => {
   return await prisma.semester.create({
@@ -29,6 +29,12 @@ export const findSemesterByYearAndTerm = async (data: {
       term: data.term ?? undefined,
       user_id: data.user_id,
     },
+  });
+};
+
+export const findSemesterById = async (data: { id: string }) => {
+  return await prisma.semester.findUnique({
+    where: { id: data.id },
   });
 };
 

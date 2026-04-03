@@ -1,6 +1,8 @@
+import createHttpError from "http-errors";
 import {
   createSemester,
   deleteSemester,
+  findSemesterById,
   findSemesters,
   updateSemester,
 } from "../repositories/semester.repo.js";
@@ -8,7 +10,7 @@ import {
 export const addSemester = async (data: {
   semester_year: number;
   term: string;
-  is_completed: boolean;
+  is_complete: boolean;
   user_id: string;
 }) => {
   const semester = await createSemester(data);
@@ -22,12 +24,42 @@ export const getSemesters = async (data: { user_id: string }) => {
 
 export const editSemester = async (data: {
   id: string;
+  user_id: string;
   data: { semester_year?: number; term?: string; is_complete?: boolean };
 }) => {
+  const isExisted = await findSemesterById({ id: data.id });
+
+  // Check existence
+  if (!isExisted) {
+    throw createHttpError.NotFound("Semester not found");
+  }
+
+  // Check ownership
+  if (isExisted.user_id !== data.user_id) {
+    throw createHttpError.Forbidden(
+      "You don't have permission to edit this semester",
+    );
+  }
+
   const semester = await updateSemester(data);
   return semester;
 };
 
-export const removeSemester = async (data: { id: string }) => {
+export const removeSemester = async (data: { id: string; user_id: string }) => {
+  const isExisted = await findSemesterById({ id: data.id });
+
+  // Check existence
+  if (!isExisted) {
+    throw createHttpError.NotFound("Semester not found");
+  }
+
+  // Check ownership
+  if (isExisted.user_id !== data.user_id) {
+    throw createHttpError.Forbidden(
+      "You don't have permission to delete this semester",
+    );
+  }
+
   const semester = await deleteSemester(data);
+  return semester;
 };

@@ -2,9 +2,14 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt.js";
 import createHttpError from "http-errors";
 
+type JwtPayload = {
+  user_id: string;
+  email: string;
+};
+
 declare module "express-serve-static-core" {
   interface Request {
-    user?: ReturnType<typeof verifyToken>;
+    user?: JwtPayload;
   }
 }
 
@@ -14,10 +19,19 @@ export const authMiddleware = (
   next: NextFunction,
 ) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) throw createHttpError.Unauthorized("No token provided");
+    const authHeader = req.headers.authorization;
 
-    const decoded = verifyToken(token);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw createHttpError.Unauthorized("Invalid authorization format");
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      throw createHttpError.Unauthorized("Invalid authorization format");
+    }
+
+    const decoded = verifyToken(token) as JwtPayload;
     req.user = decoded;
     next();
   } catch {
