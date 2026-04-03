@@ -5,12 +5,14 @@ import {
   handleRegister,
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middleware/middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { loginSchema, registerSchema } from "../utils/auth.validator.js";
 
 const authRouter = Router();
 
-authRouter.post("/register", handleRegister);
+authRouter.post("/register", validate(registerSchema), handleRegister);
 
-authRouter.post("/login", handleLogin);
+authRouter.post("/login", validate(loginSchema), handleLogin);
 
 authRouter.get("/users", authMiddleware, handleGetUsers);
 
