@@ -37,16 +37,14 @@ export const findUserByEmailAndPassword = async (data: { email: string; password
   return user;
 };
 
-export const findUsers = async (data: {
+export const findUsers = async (data: Partial<{
   id?: string;
   name?: string;
   email?: string;
-}) => {
+}>) => {
   return await prisma.user.findMany({
     where: {
-      ...(data.id !== undefined ? { id: data.id } : {}),
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.email !== undefined ? { email: data.email } : {}),
+      ...data,
     },
   });
 };
