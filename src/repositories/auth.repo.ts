@@ -20,10 +20,19 @@ export const createUser = async (data: {
 
   return await prisma.user.create({
     data: { ...data, password: hashedPassword },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      created_at: true,
+    },
   });
 };
 
-export const findUserByEmailAndPassword = async (data: { email: string; password: string }) => {
+export const findUserByEmailAndPassword = async (data: {
+  email: string;
+  password: string;
+}) => {
   const user = await prisma.user.findUnique({
     where: { email: data.email },
   });
@@ -34,17 +43,27 @@ export const findUserByEmailAndPassword = async (data: { email: string; password
   if (!isMatched)
     throw createHttpError.Unauthorized("Invalid User or Password");
 
-  return user;
+  const { password: _, ...userWithoutPassword } = user;
+
+  return userWithoutPassword;
 };
 
-export const findUsers = async (data: Partial<{
-  id?: string;
-  name?: string;
-  email?: string;
-}>) => {
+export const findUsers = async (
+  data: Partial<{
+    id?: string;
+    name?: string;
+    email?: string;
+  }>,
+) => {
   return await prisma.user.findMany({
     where: {
       ...data,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      created_at: true,
     },
   });
 };

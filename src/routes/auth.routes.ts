@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   handleGetUsers,
   handleLogin,
+  handleRefreshToken,
   handleRegister,
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middleware/middleware.js";
@@ -15,5 +16,7 @@ authRouter.post("/register", validate(registerSchema), handleRegister);
 authRouter.post("/login", validate(loginSchema), handleLogin);
 
 authRouter.get("/users", authMiddleware, handleGetUsers);
+
+authRouter.post("/refresh-token", handleRefreshToken);
 
 export default authRouter;

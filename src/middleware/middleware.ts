@@ -31,7 +31,7 @@ export const authMiddleware = (
       throw createHttpError.Unauthorized("Invalid authorization format");
     }
 
-    const decoded = verifyToken(token) as JwtPayload;
+    const decoded = verifyToken(token, "access") as JwtPayload;
     req.user = decoded;
     next();
   } catch {

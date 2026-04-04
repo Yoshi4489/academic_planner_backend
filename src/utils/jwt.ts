@@ -1,11 +1,27 @@
 import jwt from "jsonwebtoken";
+import ms from "ms";
 
-const SECRET = process.env.ACCESS_SECRET_KEY;
-
-export const signToken = (payload: { user_id: string, email: string }) => {
-  return jwt.sign(payload, SECRET as string, { expiresIn: "1h" });
+const SECRET = {
+  access: process.env.ACCESS_SECRET_KEY,
+  refresh: process.env.REFRESH_SECRET_KEY,
 };
 
-export const verifyToken = (token: string) => {
-  return jwt.verify(token, SECRET as string);
+const EXPIRES_IN = {
+  access: ms("1h"),
+  refresh: ms("30d"),
+};
+
+type TokenType = "access" | "refresh";
+
+export const signToken = (
+  payload: { user_id: string; email?: string },
+  type: TokenType,
+) => {
+  return jwt.sign(payload, SECRET[type] as string, {
+    expiresIn: EXPIRES_IN[type],
+  });
+};
+
+export const verifyToken = (token: string, type: TokenType) => {
+  return jwt.verify(token, SECRET[type] as string);
 };
