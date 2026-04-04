@@ -5,6 +5,7 @@ import {
   deleteCourse,
   deleteCoursesBySemesterId,
   findCourseById,
+  findCoursesBySemesterId,
   updateCourse,
 } from "../repositories/course.repo";
 import createHttpError from "http-errors";
@@ -59,6 +60,38 @@ export const editCourse = async (
   }
 
   return await updateCourse(course_id, data);
+};
+
+export const getCourseById = async (
+  user_id: string,
+  data: { course_id: string },
+) => {
+  const course = await findCourseById(data);
+
+  if (!course) {
+    throw createHttpError.NotFound("Course not found");
+  }
+
+  const semester = await getSemesterById(user_id, { id: course.semester_id });
+
+  if (!semester || semester.user_id !== user_id) {
+    throw createHttpError.NotFound("Course not found");
+  }
+
+  return course;
+};
+
+export const getCoursesBySemesterId = async (
+  user_id: string,
+  data: { semester_id: string },
+) => {
+  const semester = await getSemesterById(user_id, { id: data.semester_id });
+
+  if (!semester || semester.user_id !== user_id) {
+    throw createHttpError.NotFound("Semester not found");
+  }
+
+  return await findCoursesBySemesterId(data.semester_id);
 };
 
 export const removeCourse = async (

@@ -1,6 +1,18 @@
-import type { NextFunction, Request, Response } from "express";
+import {
+  response,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import createHttpError from "http-errors";
-import { addCourse, editCourse } from "../services/course.service";
+import {
+  addCourse,
+  editCourse,
+  getCourseById,
+  getCoursesBySemesterId,
+  removeCourse,
+  removeCourseBySemesterId,
+} from "../services/course.service";
 
 export const handleCreateCourse = async (
   req: Request,
@@ -32,6 +44,65 @@ export const handleCreateCourse = async (
     res.status(201).json({
       message: "Create course successfully",
       course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleGetCourseById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { course_id } = req.params;
+    const user = req.user;
+
+    if (!user || !user.user_id) {
+      throw createHttpError.Unauthorized("Unauthorized");
+    }
+
+    if (!course_id || Array.isArray(course_id)) {
+      throw createHttpError.BadRequest("Invalid course_id");
+    }
+
+    const user_id = user.user_id;
+    const course = await getCourseById(user_id, { course_id });
+
+    res.status(200).json({
+      message: "Fetch course successfully",
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleGetCourseBySemesterId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { semester_id } = req.params;
+    const user = req.user;
+
+    if (!user || !user.user_id) {
+      throw createHttpError.Unauthorized("Unauthorized");
+    }
+
+    if (!semester_id || Array.isArray(semester_id)) {
+      throw createHttpError.BadRequest("Invalid semester_id");
+    }
+
+    const user_id = user.user_id;
+
+    const courses = await getCoursesBySemesterId(user_id, { semester_id });
+
+    res.status(200).json({
+      message: "Fetch courses successfully",
+      courses,
     });
   } catch (error) {
     next(error);
@@ -80,6 +151,51 @@ export const handleDeleteCourse = async (
   next: NextFunction,
 ) => {
   try {
+    const { course_id } = req.params;
+    const user = req.user;
+
+    if (!user || !user.user_id) {
+      throw createHttpError.Unauthorized("Unauthorized");
+    }
+
+    if (!course_id || Array.isArray(course_id)) {
+      throw createHttpError.BadRequest("Invalid course_id");
+    }
+
+    const user_id = user.user_id;
+    const course = await removeCourse(user_id, { course_id });
+    res.status(200).json({
+      message: "Delete course successfully",
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleDeleteCourseBySemester = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { semester_id } = req.params;
+    const user = req.user;
+
+    if (!user || !user.user_id) {
+      throw createHttpError.Unauthorized("Unauthorized");
+    }
+
+    if (!semester_id || Array.isArray(semester_id)) {
+      throw createHttpError.BadRequest("Invalid semester_id");
+    }
+
+    const user_id = user.user_id;
+    const courses = await removeCourseBySemesterId(user_id, { semester_id });
+    res.status(200).json({
+      message: "Delete courses successfully",
+      courses,
+    });
   } catch (error) {
     next(error);
   }

@@ -68,18 +68,18 @@ export const handleGetSemesterById = async (
   next: NextFunction,
 ) => {
   try {
-    const { id } = req.params;
+    const { semester_id } = req.params;
     const user = req.user;
 
     if (!user || !user.user_id) {
       throw createHttpError.Unauthorized("Unauthorized");
     }
 
-    if (id === undefined || Array.isArray(id)) {
+    if (semester_id === undefined || Array.isArray(semester_id)) {
       throw createHttpError.BadRequest("Missing semester id");
     }
 
-    const semester = await getSemesterById(user.user_id, { id: id as string });
+    const semester = await getSemesterById(user.user_id, { id: semester_id as string });
 
     if (!semester) {
       throw createHttpError.NotFound("Semester not found");
@@ -106,15 +106,19 @@ export const handleUpdateSemester = async (
       throw createHttpError.Unauthorized("Unauthorized");
     }
 
-    const { id } = req.params;
+    const { semester_id } = req.params;
     const { year, term, is_complete } = req.body;
 
-    if (id === undefined || Array.isArray(id)) {
+    if (semester_id === undefined || Array.isArray(semester_id)) {
       throw createHttpError.BadRequest("Missing semester id");
     }
 
+    if (!year && !term && is_complete === undefined) {
+      throw createHttpError.BadRequest("Missing data to update");
+    }
+
     const semester = await editSemester({
-      id: id as string,
+      id: semester_id as string,
       user_id: user.user_id,
       data: { year, term, is_complete },
     });
@@ -140,14 +144,14 @@ export const handleDeleteSemester = async (
       throw createHttpError.Unauthorized("Unauthorized");
     }
 
-    const { id } = req.params;
+    const { semester_id } = req.params;
 
-    if (id === undefined || Array.isArray(id)) {
+    if (semester_id === undefined || Array.isArray(semester_id)) {
       throw createHttpError.BadRequest("Missing semester id");
     }
 
     const semester = await removeSemester({
-      id: id as string,
+      id: semester_id as string,
       user_id: user.user_id,
     });
 
