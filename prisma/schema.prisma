@@ -43,7 +43,7 @@ model User {
 
 model Semester {
   id          String   @id @default(uuid())
-  year        Int      
+  year        Int
   term        String
   is_complete Boolean
   created_at  DateTime @default(now())
@@ -83,6 +83,7 @@ model GPA {
 
 model Goal {
   id              String @id @default(uuid())
+  name            String @default("")
   target_gpa      Float
   target_semester String
 
