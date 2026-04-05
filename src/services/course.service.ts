@@ -9,6 +9,7 @@ import {
   updateCourse,
 } from "../repositories/course.repo";
 import createHttpError from "http-errors";
+import type { CourseType } from "../generated/prisma/enums";
 
 export const addCourse = async (
   user_id: string,
@@ -18,6 +19,7 @@ export const addCourse = async (
     credit: number;
     type: Plan;
     semester_id: string;
+    category: CourseType;
   },
 ) => {
   const semester = await getSemesterById(user_id, { id: data.semester_id });
@@ -40,6 +42,7 @@ export const editCourse = async (
     credit: number;
     type: Plan;
     semester_id: string;
+    category: CourseType;
   }>,
 ) => {
   const course = await findCourseById({ course_id });

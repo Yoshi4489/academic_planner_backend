@@ -5,6 +5,7 @@ export const createGoal = async (data: {
   name?: string;
   target_gpa: number;
   target_semester: string;
+  is_achieved?: boolean;
 }) => {
   return await prisma.goal.create({ data });
 };
@@ -15,6 +16,7 @@ export const updateGoal = async (
     name: string;
     target_gpa: number;
     target_semester: string;
+    is_achieved: boolean;
   }>,
 ) => {
   return await prisma.goal.update({ where: { id }, data });

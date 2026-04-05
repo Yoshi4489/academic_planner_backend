@@ -9,6 +9,10 @@ export const createCourseSchema = z.object({
   credit: z.number().int().positive("Credit must be a positive integer"),
   type: z.enum(["ACTUAL", "PLAN"], "Invalid course type"),
   semester_id: z.string().min(1, "Semester ID is required"),
+  category: z.enum(
+    ["GEN_ED", "MAJOR_REQUIRED", "MAJOR_ELECTIVE", "MINOR", "FREE_ELECTIVE"],
+    "Invalid course category",
+  ),
 });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;

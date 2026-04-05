@@ -28,6 +28,14 @@ enum Plan {
   ACTUAL
 }
 
+enum CourseType {
+  GEN_ED
+  MAJOR_REQUIRED
+  MAJOR_ELECTIVE
+  MINOR
+  FREE_ELECTIVE
+}
+
 model User {
   id         String   @id @default(uuid())
   name       String
@@ -56,24 +64,27 @@ model Semester {
 }
 
 model Course {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
+  category    CourseType
   grade       Grade
   grade_point Float?
   credit      Int
   type        Plan
-  created_at  DateTime @default(now())
+  created_at  DateTime   @default(now())
 
   semester_id String
   semester    Semester @relation(fields: [semester_id], references: [id])
 }
 
 model GPA {
-  user_id       String
-  semester_id   String
-  gpa           Float
-  cum_gpa       Float
-  calculated_at DateTime @default(now())
+  user_id            String
+  semester_id        String
+  gpa                Float
+  cum_gpa            Float
+  total_credits      Int
+  total_grade_points Float
+  calculated_at      DateTime @default(now())
 
   user     User     @relation(fields: [user_id], references: [id])
   semester Semester @relation(fields: [semester_id], references: [id])
@@ -82,10 +93,11 @@ model GPA {
 }
 
 model Goal {
-  id              String @id @default(uuid())
-  name            String @default("")
+  id              String  @id @default(uuid())
+  name            String  @default("")
   target_gpa      Float
   target_semester String
+  is_achieved     Boolean @default(false)
 
   user_id String
   user    User   @relation(fields: [user_id], references: [id])
@@ -95,6 +107,7 @@ model ChatLog {
   id          String   @id @default(uuid())
   input_data  String
   ai_response String
+  context     String?
   created_at  DateTime @default(now())
 
   user_id String

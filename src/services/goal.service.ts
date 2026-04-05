@@ -12,6 +12,7 @@ export const addGoal = async (data: {
   name?: string;
   target_gpa: number;
   target_semester: string;
+  is_achieved?: boolean;
 }) => {
   return await createGoal(data);
 };
@@ -23,6 +24,7 @@ export const editGoal = async (
     name?: string;
     target_gpa?: number;
     target_semester?: string;
+    is_achieved?: boolean;
   }>,
 ) => {
   const goal = await findGoalById(goal_id);

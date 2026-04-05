@@ -16,7 +16,7 @@ export const handleAddGoal = async (
   try {
     const user = req.user;
 
-    const { name, target_gpa, target_semester } = req.body;
+    const { name, target_gpa, target_semester, is_achieved } = req.body;
 
     if (!user || !user?.user_id) {
       throw createHttpError.Unauthorized("User not authenticated");
@@ -33,6 +33,7 @@ export const handleAddGoal = async (
       name,
       target_gpa,
       target_semester,
+      is_achieved,
     });
 
     res.status(201).json({
@@ -52,7 +53,7 @@ export const handleEditGoal = async (
   try {
     const user = req.user;
     const { goal_id } = req.params;
-    const { name, target_gpa, target_semester } = req.body;
+    const { name, target_gpa, target_semester, is_achieved } = req.body;
 
     if (!user || !user?.user_id) {
       throw createHttpError.Unauthorized("User not authenticated");
@@ -71,6 +72,7 @@ export const handleEditGoal = async (
       name,
       target_gpa,
       target_semester,
+      is_achieved,
     });
 
     res.status(200).json({
