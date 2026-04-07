@@ -11,7 +11,7 @@ export const addGoal = async (data: {
   user_id: string;
   name?: string;
   target_gpa: number;
-  target_semester: string;
+  target_semester_id: string;
   is_achieved?: boolean;
 }) => {
   return await createGoal(data);
@@ -23,7 +23,7 @@ export const editGoal = async (
   data: Partial<{
     name?: string;
     target_gpa?: number;
-    target_semester?: string;
+    target_semester_id?: string;
     is_achieved?: boolean;
   }>,
 ) => {

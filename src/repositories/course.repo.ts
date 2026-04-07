@@ -1,4 +1,4 @@
-import type { Grade, Plan, Prisma } from "@prisma/client";
+import type { Grade, Plan } from "@prisma/client";
 import prisma from "../config/prisma";
 import { gradePointMap } from "../utils/grade";
 import type { CourseType } from "../generated/prisma/enums";
@@ -11,11 +11,11 @@ export const createCourse = async (data: {
   semester_id: string;
   category: CourseType;
 }) => {
-  const grade_point = data.grade ? gradePointMap[data.grade] : undefined;
+  const grade_point = gradePointMap[data.grade];
   return await prisma.course.create({
     data: {
       ...data,
-      ...(grade_point !== undefined ? { grade_point } : {}),
+      grade_point,
     },
   });
 };
@@ -44,7 +44,7 @@ export const updateCourse = async (
   }>,
 ) => {
   const grade_point = data.grade ? gradePointMap[data.grade] : undefined;
-  const updateData: Prisma.CourseUncheckedUpdateInput = {
+  const updateData = {
     ...data,
     ...(grade_point !== undefined ? { grade_point } : {}),
   };

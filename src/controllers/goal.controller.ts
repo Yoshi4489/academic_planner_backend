@@ -16,13 +16,13 @@ export const handleAddGoal = async (
   try {
     const user = req.user;
 
-    const { name, target_gpa, target_semester, is_achieved } = req.body;
+    const { name, target_gpa, target_semester_id, is_achieved } = req.body;
 
     if (!user || !user?.user_id) {
       throw createHttpError.Unauthorized("User not authenticated");
     }
 
-    if (!target_gpa || !target_semester) {
+    if (!target_gpa || !target_semester_id) {
       throw createHttpError.BadRequest("Invalid required fields");
     }
 
@@ -32,7 +32,7 @@ export const handleAddGoal = async (
       user_id,
       name,
       target_gpa,
-      target_semester,
+      target_semester_id,
       is_achieved,
     });
 
@@ -53,7 +53,7 @@ export const handleEditGoal = async (
   try {
     const user = req.user;
     const { goal_id } = req.params;
-    const { name, target_gpa, target_semester, is_achieved } = req.body;
+    const { name, target_gpa, target_semester_id, is_achieved } = req.body;
 
     if (!user || !user?.user_id) {
       throw createHttpError.Unauthorized("User not authenticated");
@@ -63,7 +63,7 @@ export const handleEditGoal = async (
       throw createHttpError.BadRequest("Invalid goal ID");
     }
 
-    if (!name && !target_gpa && !target_semester) {
+    if (!name && !target_gpa && !target_semester_id) {
       throw createHttpError.BadRequest("No fields to update");
     }
 
@@ -71,7 +71,7 @@ export const handleEditGoal = async (
     const updatedGoal = await editGoal(user_id, goal_id, {
       name,
       target_gpa,
-      target_semester,
+      target_semester_id,
       is_achieved,
     });
 

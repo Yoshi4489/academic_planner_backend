@@ -10,6 +10,9 @@ import {
 } from "../repositories/course.repo";
 import createHttpError from "http-errors";
 import type { CourseType } from "../generated/prisma/enums";
+import { findGPAByUserIdAndSemesterId } from "../repositories/gpa.repo";
+import { editGPA } from "./gpa.services";
+import { gradePointMap } from "../utils/grade";
 
 export const addCourse = async (
   user_id: string,
@@ -27,6 +30,20 @@ export const addCourse = async (
   if (!semester || semester.user_id !== user_id) {
     throw createHttpError.NotFound("Semester not found");
   }
+
+  const GPA = await findGPAByUserIdAndSemesterId(user_id, data.semester_id);
+
+  if (!GPA) {
+    throw createHttpError.InternalServerError(
+      "GPA record not found for the semester. Please contact support.",
+    );
+  }
+
+  await editGPA(data.semester_id, user_id, {
+    total_credits: GPA.total_credits + data.credit,
+    total_grade_points: GPA.total_grade_points + data.credit * gradePointMap[data.grade],
+    gpa: (GPA.total_grade_points + data.credit * gradePointMap[data.grade]) / (GPA.total_credits + data.credit),
+  });
 
   return await createCourse({
     ...data,

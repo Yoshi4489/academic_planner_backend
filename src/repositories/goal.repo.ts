@@ -4,7 +4,7 @@ export const createGoal = async (data: {
   user_id: string;
   name?: string;
   target_gpa: number;
-  target_semester: string;
+  target_semester_id: string;
   is_achieved?: boolean;
 }) => {
   return await prisma.goal.create({ data });
@@ -15,7 +15,7 @@ export const updateGoal = async (
   data: Partial<{
     name: string;
     target_gpa: number;
-    target_semester: string;
+    target_semester_id: string;
     is_achieved: boolean;
   }>,
 ) => {

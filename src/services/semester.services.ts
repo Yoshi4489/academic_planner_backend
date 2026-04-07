@@ -6,14 +6,27 @@ import {
   findSemesters,
   updateSemester,
 } from "../repositories/semester.repo.js";
+import { addGPA, removeGPA } from "./gpa.services.js";
+import { removeCourseBySemesterId } from "./course.service.js";
 
 export const addSemester = async (data: {
   year: number;
   term: string;
   is_complete: boolean;
   user_id: string;
+  term_no: number;
 }) => {
   const semester = await createSemester(data);
+
+  await addGPA({
+    semester_id: semester.id,
+    user_id: data.user_id,
+    gpa: 0,
+    cum_gpa: 0,
+    total_credits: 0,
+    total_grade_points: 0,
+  });
+
   return semester;
 };
 
@@ -42,7 +55,12 @@ export const getSemesterById = async (
 export const editSemester = async (data: {
   id: string;
   user_id: string;
-  data: { year?: number; term?: string; is_complete?: boolean };
+  data: {
+    year?: number;
+    term?: string;
+    is_complete?: boolean;
+    term_no?: number;
+  };
 }) => {
   const isExisted = await findSemesterById({ id: data.id });
 
@@ -78,5 +96,6 @@ export const removeSemester = async (data: { id: string; user_id: string }) => {
   }
 
   const semester = await deleteSemester(data);
+
   return semester;
 };

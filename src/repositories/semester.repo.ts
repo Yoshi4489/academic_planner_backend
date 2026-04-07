@@ -5,6 +5,7 @@ export const createSemester = async (data: {
   term: string;
   is_complete: boolean;
   user_id: string;
+  term_no: number;
 }) => {
   return await prisma.semester.create({ data });
 };
@@ -38,7 +39,12 @@ export const findSemesterById = async (data: { id: string }) => {
 
 export const updateSemester = async (data: {
   id: string;
-  data: { year?: number; term?: string; is_complete?: boolean };
+  data: {
+    year?: number;
+    term?: string;
+    is_complete?: boolean;
+    term_no?: number;
+  };
 }) => {
   return await prisma.semester.update({
     where: { id: data.id },
@@ -48,4 +54,23 @@ export const updateSemester = async (data: {
 
 export const deleteSemester = async (data: { id: string }) => {
   return await prisma.semester.delete({ where: { id: data.id } });
+};
+
+export const getAllSemestersBeforeCurrentSemester = async (data: {
+  user_id: string;
+  year: number;
+  term_no: number;
+}) => {
+  return await prisma.semester.findMany({
+    where: {
+      user_id: data.user_id,
+      year: {
+        lt: data.year,
+      },
+      term_no: {
+        lt: data.term_no,
+      },
+    },
+    include: { courses: true },
+  });
 };
