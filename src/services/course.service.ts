@@ -11,7 +11,7 @@ import {
 import createHttpError from "http-errors";
 import type { CourseType } from "../generated/prisma/enums";
 import { findGPAByUserIdAndSemesterId } from "../repositories/gpa.repo";
-import { editGPA } from "./gpa.services";
+import { calculateCumGPA, calculateGPA, editGPA } from "./gpa.services";
 import { gradePointMap } from "../utils/grade";
 
 export const addCourse = async (
@@ -41,13 +41,21 @@ export const addCourse = async (
 
   await editGPA(data.semester_id, user_id, {
     total_credits: GPA.total_credits + data.credit,
-    total_grade_points: GPA.total_grade_points + data.credit * gradePointMap[data.grade],
-    gpa: (GPA.total_grade_points + data.credit * gradePointMap[data.grade]) / (GPA.total_credits + data.credit),
+    total_grade_points:
+      GPA.total_grade_points + data.credit * gradePointMap[data.grade],
+    gpa: parseFloat(
+      (
+        (GPA.total_grade_points + gradePointMap[data.grade] * data.credit) /
+        (GPA.total_credits + data.credit)
+      ).toFixed(2),
+    ),
   });
 
-  return await createCourse({
-    ...data,
-  });
+  const course = await createCourse(data);
+
+  await calculateCumGPA(data.semester_id, user_id);
+
+  return course;
 };
 
 export const editCourse = async (
@@ -79,7 +87,20 @@ export const editCourse = async (
     }
   }
 
-  return await updateCourse(course_id, data);
+  const GPA = await findGPAByUserIdAndSemesterId(user_id, course.semester_id);
+
+  if (!GPA) {
+    throw createHttpError.InternalServerError(
+      "GPA record not found for the semester. Please contact support.",
+    );
+  }
+
+  const updatedCourse = await updateCourse(course_id, data);
+
+  await calculateGPA(course.semester_id, user_id);
+  await calculateCumGPA(course.semester_id, user_id);
+
+  return updatedCourse;
 };
 
 export const getCourseById = async (
@@ -130,7 +151,11 @@ export const removeCourse = async (
     throw createHttpError.NotFound("Semester Not Found");
   }
 
-  return await deleteCourse(data.course_id);
+  const deletedCourse = await deleteCourse(data.course_id);
+
+  await calculateGPA(semester.id, user_id);
+  await calculateCumGPA(semester.id, user_id);
+  return deletedCourse;
 };
 
 export const removeCourseBySemesterId = async (

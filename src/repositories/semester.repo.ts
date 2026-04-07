@@ -34,6 +34,7 @@ export const findSemesterByYearAndTerm = async (data: {
 export const findSemesterById = async (data: { id: string }) => {
   return await prisma.semester.findUnique({
     where: { id: data.id },
+    include: { courses: true },
   });
 };
 
@@ -56,21 +57,45 @@ export const deleteSemester = async (data: { id: string }) => {
   return await prisma.semester.delete({ where: { id: data.id } });
 };
 
-export const getAllSemestersBeforeCurrentSemester = async (data: {
+export const findAllSemestersBeforeCurrentSemester = async (data: {
   user_id: string;
   year: number;
   term_no: number;
 }) => {
   return await prisma.semester.findMany({
     where: {
-      user_id: data.user_id,
-      year: {
-        lt: data.year,
-      },
-      term_no: {
-        lt: data.term_no,
-      },
+      OR: [
+        { year: { lt: data.year } },
+        { year: data.year, term_no: { lt: data.term_no } },
+      ],
     },
+    include: { courses: true },
+  });
+};
+
+export const findSemestersAfterCurrentSemester = async (
+  semester_id: string,
+  user_id: string,
+) => {
+  const currentSemester = await prisma.semester.findUnique({
+    where: { id: semester_id },
+  });
+
+  if (!currentSemester) return null;
+
+  return await prisma.semester.findMany({
+    where: {
+      user_id,
+      OR: [
+        // ปีหลังจากนี้
+        { year: { gt: currentSemester.year } },
+        {
+          year: currentSemester.year,
+          term_no: { gt: currentSemester.term_no },
+        },
+      ],
+    },
+    orderBy: [{ year: "asc" }, { term_no: "asc" }],
     include: { courses: true },
   });
 };

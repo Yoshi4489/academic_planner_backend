@@ -4,9 +4,10 @@ import {
   deleteSemester,
   findSemesterById,
   findSemesters,
+  findSemestersAfterCurrentSemester,
   updateSemester,
 } from "../repositories/semester.repo.js";
-import { addGPA, removeGPA } from "./gpa.services.js";
+import { addGPA, calculateCumGPA, removeGPA } from "./gpa.services.js";
 import { removeCourseBySemesterId } from "./course.service.js";
 
 export const addSemester = async (data: {
@@ -77,6 +78,11 @@ export const editSemester = async (data: {
   }
 
   const semester = await updateSemester(data);
+
+  if (data.data.term_no !== undefined || data.data.year !== undefined) {
+    await calculateCumGPA(data.id, data.user_id);
+  }
+
   return semester;
 };
 
@@ -95,7 +101,27 @@ export const removeSemester = async (data: { id: string; user_id: string }) => {
     );
   }
 
+  const semesterAfterThis = await getSemesterAfterCurrentSemester(
+    data.id,
+    data.user_id,
+  );
+
+  if (
+    semesterAfterThis?.length !== 0 &&
+    semesterAfterThis !== null &&
+    semesterAfterThis[0]?.id !== undefined
+  ) {
+    await calculateCumGPA(semesterAfterThis[0]?.id, data.user_id);
+  }
+
   const semester = await deleteSemester(data);
 
   return semester;
+};
+
+export const getSemesterAfterCurrentSemester = async (
+  semester_id: string,
+  user_id: string,
+) => {
+  return await findSemestersAfterCurrentSemester(semester_id, user_id);
 };
