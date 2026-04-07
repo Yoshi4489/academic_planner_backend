@@ -7,8 +7,8 @@ const SECRET = {
 };
 
 const EXPIRES_IN = {
-  access: ms("1h"),
-  refresh: ms("30d"),
+  access: Math.floor(ms("1h") / 1000),
+  refresh: Math.floor(ms("30d") / 1000),
 };
 
 type TokenType = "access" | "refresh";
