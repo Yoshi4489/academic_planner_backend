@@ -64,6 +64,7 @@ export const findAllSemestersBeforeCurrentSemester = async (data: {
 }) => {
   return await prisma.semester.findMany({
     where: {
+      user_id: data.user_id,
       OR: [
         { year: { lt: data.year } },
         { year: data.year, term_no: { lt: data.term_no } },

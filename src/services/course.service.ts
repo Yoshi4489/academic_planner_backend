@@ -38,21 +38,9 @@ export const addCourse = async (
       "GPA record not found for the semester. Please contact support.",
     );
   }
-
-  await editGPA(data.semester_id, user_id, {
-    total_credits: GPA.total_credits + data.credit,
-    total_grade_points:
-      GPA.total_grade_points + data.credit * gradePointMap[data.grade],
-    gpa: parseFloat(
-      (
-        (GPA.total_grade_points + gradePointMap[data.grade] * data.credit) /
-        (GPA.total_credits + data.credit)
-      ).toFixed(2),
-    ),
-  });
-
   const course = await createCourse(data);
 
+  await calculateGPA(data.semester_id, user_id);
   await calculateCumGPA(data.semester_id, user_id);
 
   return course;
@@ -99,6 +87,11 @@ export const editCourse = async (
 
   await calculateGPA(course.semester_id, user_id);
   await calculateCumGPA(course.semester_id, user_id);
+
+  if (data.semester_id && data.semester_id !== course.semester_id) {
+    await calculateGPA(data.semester_id, user_id);
+    await calculateCumGPA(data.semester_id, user_id);
+  }
 
   return updatedCourse;
 };
@@ -168,5 +161,10 @@ export const removeCourseBySemesterId = async (
     throw createHttpError.NotFound("Semester not found");
   }
 
-  return await deleteCoursesBySemesterId(semester.id);
+  const removedCourses = await deleteCoursesBySemesterId(data.semester_id);
+
+  await calculateGPA(semester.id, user_id);
+  await calculateCumGPA(semester.id, user_id);
+
+  return removedCourses;
 };

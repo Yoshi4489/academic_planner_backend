@@ -7,8 +7,7 @@ import {
   findSemestersAfterCurrentSemester,
   updateSemester,
 } from "../repositories/semester.repo.js";
-import { addGPA, calculateCumGPA, removeGPA } from "./gpa.services.js";
-import { removeCourseBySemesterId } from "./course.service.js";
+import { addGPA, calculateCumGPA } from "./gpa.services.js";
 
 export const addSemester = async (data: {
   year: number;
@@ -28,6 +27,8 @@ export const addSemester = async (data: {
     total_grade_points: 0,
   });
 
+  await calculateCumGPA(semester.id, data.user_id);
+
   return semester;
 };
 
@@ -44,7 +45,11 @@ export const getSemesterById = async (
 ) => {
   const semester = await findSemesterById(data);
 
-  if (semester?.user_id !== user_id) {
+  if (!semester) {
+    throw createHttpError.NotFound("Semester not found");
+  }
+
+  if (semester.user_id !== user_id) {
     throw createHttpError.Forbidden(
       "You don't have permission to access this semester",
     );
@@ -80,7 +85,19 @@ export const editSemester = async (data: {
   const semester = await updateSemester(data);
 
   if (data.data.term_no !== undefined || data.data.year !== undefined) {
-    await calculateCumGPA(data.id, data.user_id);
+    const allSemesters = await findSemesters({ user_id: data.user_id });
+
+    allSemesters.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.term_no - b.term_no;
+    });
+
+    if (allSemesters.length > 0) {
+      const semesterId = allSemesters[0]?.id;
+      if (semesterId) {
+        await calculateCumGPA(semesterId, data.user_id);
+      }
+    }
   }
 
   return semester;
@@ -105,16 +122,13 @@ export const removeSemester = async (data: { id: string; user_id: string }) => {
     data.id,
     data.user_id,
   );
-
-  if (
-    semesterAfterThis?.length !== 0 &&
-    semesterAfterThis !== null &&
-    semesterAfterThis[0]?.id !== undefined
-  ) {
-    await calculateCumGPA(semesterAfterThis[0]?.id, data.user_id);
-  }
+  const nextSemesterId = semesterAfterThis?.[0]?.id;
 
   const semester = await deleteSemester(data);
+
+  if (nextSemesterId) {
+    await calculateCumGPA(nextSemesterId, data.user_id);
+  }
 
   return semester;
 };

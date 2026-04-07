@@ -11,6 +11,7 @@ import {
   updateGPA,
 } from "../repositories/gpa.repo";
 import { gradePointMap } from "../utils/grade";
+import { findAllSemestersBeforeCurrentSemester } from "../repositories/semester.repo";
 
 export const addGPA = async (data: {
   semester_id: string;
@@ -80,14 +81,35 @@ export const getGPAByUserId = async (user_id: string) => {
 };
 
 export const calculateCumGPA = async (semester_id: string, user_id: string) => {
+  const currentSemester = await getSemesterById(user_id, { id: semester_id });
   const currentGPA = await findGPAByUserIdAndSemesterId(user_id, semester_id);
-  if (!currentGPA) return;
+  if (!currentGPA || !currentSemester) return;
 
-  let cumulativeCredits = currentGPA.total_credits;
-  let cumulativeGradePoints = currentGPA.total_grade_points;
+  let cumulativeCredits = 0;
+  let cumulativeGradePoints = 0;
+
+  const pastSemesters = await findAllSemestersBeforeCurrentSemester({
+    user_id,
+    year: currentSemester.year,
+    term_no: currentSemester.term_no,
+  });
+
+  for (const past of pastSemesters) {
+    const pastGPA = await findGPAByUserIdAndSemesterId(user_id, past.id);
+    if (pastGPA) {
+      cumulativeCredits += pastGPA.total_credits;
+      cumulativeGradePoints += pastGPA.total_grade_points;
+    }
+  }
+
+  cumulativeCredits += currentGPA.total_credits;
+  cumulativeGradePoints += currentGPA.total_grade_points;
 
   await editGPA(semester_id, user_id, {
-    cum_gpa: parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2)),
+    cum_gpa:
+      cumulativeCredits > 0
+        ? parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2))
+        : 0,
   });
 
   const laterSemesters = await getSemesterAfterCurrentSemester(
@@ -96,18 +118,18 @@ export const calculateCumGPA = async (semester_id: string, user_id: string) => {
   );
   if (!laterSemesters) return;
 
-  for (const semester of laterSemesters) {
-    const gpa = await findGPAByUserIdAndSemesterId(user_id, semester.id);
-    if (!gpa) continue;
+  for (const futureSem of laterSemesters) {
+    const futureGPA = await findGPAByUserIdAndSemesterId(user_id, futureSem.id);
+    if (!futureGPA) continue;
 
-    cumulativeCredits += gpa.total_credits;
-    cumulativeGradePoints += gpa.total_grade_points;
+    cumulativeCredits += futureGPA.total_credits;
+    cumulativeGradePoints += futureGPA.total_grade_points;
 
-    const cum_gpa =
-      cumulativeCredits > 0 ? cumulativeGradePoints / cumulativeCredits : 0;
-
-    await editGPA(semester.id, user_id, {
-      cum_gpa: parseFloat(cum_gpa.toFixed(2)),
+    await editGPA(futureSem.id, user_id, {
+      cum_gpa:
+        cumulativeCredits > 0
+          ? parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2))
+          : 0,
     });
   }
 };
@@ -123,12 +145,16 @@ export const calculateGPA = async (semester_id: string, user_id: string) => {
   let total_credits = 0;
   for (const course of semester.courses) {
     total_credits += course.credit;
-    total_grade_points += course.grade_point ?? gradePointMap[course.grade] * course.credit;
+    total_grade_points +=
+      (course.grade_point ?? gradePointMap[course.grade]) * course.credit;
   }
 
   await editGPA(semester_id, user_id, {
     total_credits,
     total_grade_points,
-    gpa: parseFloat((total_grade_points / total_credits).toFixed(2)),
+    gpa:
+      total_credits > 0
+        ? parseFloat((total_grade_points / total_credits).toFixed(2))
+        : 0,
   });
 };
