@@ -13,7 +13,7 @@ export const createSemester = async (data: {
 export const findSemesters = async (data: { user_id: string }) => {
   return await prisma.semester.findMany({
     where: { user_id: data.user_id },
-    include: { courses: true },
+    include: { courses: true, gpas: true },
   });
 };
 

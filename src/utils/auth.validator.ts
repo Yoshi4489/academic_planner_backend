@@ -11,10 +11,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-    .min(8, "Password must be between 8 and 32 characters long")
-    .max(32, "Password must be between 8 and 32 characters long"),
+  password: z.string(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

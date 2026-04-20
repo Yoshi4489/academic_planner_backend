@@ -37,7 +37,7 @@ export const findUserByEmailAndPassword = async (data: {
     where: { email: data.email },
   });
 
-  if (!user) throw createHttpError.Unauthorized("User not found");
+  if (!user) throw createHttpError.Unauthorized("Invalid User or Password");
 
   const isMatched = await compare(data.password, user.password);
   if (!isMatched)

@@ -63,5 +63,5 @@ export const refreshToken = async (refreshToken: string) => {
 
   const access_token = signToken({ user_id, email: user.email }, "access");
 
-  return { access_token };
+  return { access_token, user };
 };

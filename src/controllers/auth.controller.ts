@@ -95,11 +95,12 @@ export const handleRefreshToken = async (
       throw createHttpError.BadRequest("Invalid token");
     }
 
-    const { access_token } = await refreshToken(token);
+    const { access_token, user } = await refreshToken(token);
 
     return res.status(200).json({
       message: "Token refreshed successfully",
       access_token,
+      user,
     });
   } catch (error) {
     next(error);
