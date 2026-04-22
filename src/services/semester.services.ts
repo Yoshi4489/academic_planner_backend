@@ -3,6 +3,7 @@ import {
   createSemester,
   deleteSemester,
   findSemesterById,
+  findSemesterByYearAndTermNo,
   findSemesters,
   findSemestersAfterCurrentSemester,
   updateSemester,
@@ -16,6 +17,16 @@ export const addSemester = async (data: {
   user_id: string;
   term_no: number;
 }) => {
+  const semesterExists = await findSemesterByYearAndTermNo({
+    year: data.year,
+    term_no: data.term_no,
+    user_id: data.user_id,
+  });
+
+  if (semesterExists) {
+    throw createHttpError.Conflict("Semester already exists");
+  }
+
   const semester = await createSemester(data);
 
   await addGPA({
