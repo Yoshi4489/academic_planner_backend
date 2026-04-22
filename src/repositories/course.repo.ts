@@ -1,7 +1,6 @@
-import type { Grade, Plan } from "@prisma/client";
 import prisma from "../config/prisma";
 import { gradePointMap } from "../utils/grade";
-import type { CourseType } from "../generated/prisma/enums";
+import type { CourseType, Grade, Plan } from "../generated/prisma/enums";
 
 export const createCourse = async (data: {
   name: string;

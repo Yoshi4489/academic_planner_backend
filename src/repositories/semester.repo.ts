@@ -17,15 +17,15 @@ export const findSemesters = async (data: { user_id: string }) => {
   });
 };
 
-export const findSemesterByYearAndTerm = async (data: {
+export const findSemesterByYearAndTermNo = async (data: {
   year: number;
-  term: string;
+  term_no: number;
   user_id: string;
 }) => {
   return await prisma.semester.findFirst({
     where: {
       year: data.year,
-      term: data.term ?? undefined,
+      term_no: data.term_no,
       user_id: data.user_id,
     },
   });
@@ -34,7 +34,7 @@ export const findSemesterByYearAndTerm = async (data: {
 export const findSemesterById = async (data: { id: string }) => {
   return await prisma.semester.findUnique({
     where: { id: data.id },
-    include: { courses: true },
+    include: { courses: true, gpas: true },
   });
 };
 
