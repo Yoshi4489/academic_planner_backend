@@ -1,4 +1,4 @@
-import type { Grade } from "@prisma/client";
+import type { Grade } from "../generated/prisma/enums";
 
 export const gradePointMap: Record<Grade, number> = {
   A: 4.0,

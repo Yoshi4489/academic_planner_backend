@@ -1,4 +1,3 @@
-import type { Grade, Plan } from "@prisma/client";
 import { getSemesterById } from "./semester.services";
 import {
   createCourse,
@@ -9,10 +8,9 @@ import {
   updateCourse,
 } from "../repositories/course.repo";
 import createHttpError from "http-errors";
-import type { CourseType } from "../generated/prisma/enums";
+import type { CourseType, Grade, Plan } from "../generated/prisma/enums";
 import { findGPAByUserIdAndSemesterId } from "../repositories/gpa.repo";
 import { calculateCumGPA, calculateGPA, editGPA } from "./gpa.services";
-import { gradePointMap } from "../utils/grade";
 
 export const addCourse = async (
   user_id: string,
