@@ -20,7 +20,7 @@ courseRouter.post(
   handleCreateCourse,
 );
 
-courseRouter.put("/editCourse/:course_id", authMiddleware, handleEditCourse);
+courseRouter.patch("/editCourse/:course_id", authMiddleware, handleEditCourse);
 
 courseRouter.delete(
   "/deleteCourse/:course_id",

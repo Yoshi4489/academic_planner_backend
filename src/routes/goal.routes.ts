@@ -19,7 +19,7 @@ goalRouter.post(
   handleAddGoal,
 );
 
-goalRouter.put("/updateGoal/:goal_id", authMiddleware, handleEditGoal);
+goalRouter.patch("/updateGoal/:goal_id", authMiddleware, handleEditGoal);
 
 goalRouter.delete("/deleteGoal/:goal_id", authMiddleware, handleRemoveGoal);
 
