@@ -10,6 +10,7 @@ import {
 } from "../repositories/semester.repo.js";
 import { addGPA, calculateCumGPA } from "./gpa.services.js";
 import logger from "../config/logger.js";
+import { da } from "zod/locales";
 
 export const addSemester = async (data: {
   year: number;
@@ -41,13 +42,17 @@ export const addSemester = async (data: {
 
   await calculateCumGPA(semester.id, data.user_id);
 
-  logger.info(`Semester added: ${data.year} ${data.term} for user ${data.user_id}`);
+  logger.info(
+    `Semester added: ${data.year} ${data.term} for user ${data.user_id}`,
+  );
   return semester;
 };
 
 export const getSemesters = async (data: { user_id: string }) => {
   const semesters = await findSemesters(data);
-  logger.info(`Retrieved ${semesters.length} semesters for user ${data.user_id}`);
+  logger.info(
+    `Retrieved ${semesters.length} semesters for user ${data.user_id}`,
+  );
   return semesters;
 };
 
@@ -97,6 +102,21 @@ export const editSemester = async (data: {
     );
   }
 
+  if (data.data.year !== undefined || data.data.term_no !== undefined) {
+    const year = data.data.year ?? isExisted.year;
+    const termNo = data.data.term_no ?? isExisted.term_no;
+
+    const semesterExists = await findSemesterByYearAndTermNo({
+      year,
+      term_no: termNo,
+      user_id: data.user_id,
+    });
+
+    if (semesterExists && semesterExists.id !== data.id) {
+      throw createHttpError.Conflict("Semester already exists");
+    }
+  }
+
   const semester = await updateSemester(data);
 
   if (data.data.term_no !== undefined || data.data.year !== undefined) {
@@ -115,7 +135,9 @@ export const editSemester = async (data: {
     }
   }
 
-  logger.info(`Semester edited: ${data.id} for user ${data.user_id} with data: ${JSON.stringify(data.data)}`);
+  logger.info(
+    `Semester edited: ${data.id} for user ${data.user_id} with data: ${JSON.stringify(data.data)}`,
+  );
   return semester;
 };
 
@@ -154,6 +176,8 @@ export const getSemesterAfterCurrentSemester = async (
   semester_id: string,
   user_id: string,
 ) => {
-  logger.info(`Retrieving semesters after semester ${semester_id} for user ${user_id}`);
+  logger.info(
+    `Retrieving semesters after semester ${semester_id} for user ${user_id}`,
+  );
   return await findSemestersAfterCurrentSemester(semester_id, user_id);
 };

@@ -6,7 +6,7 @@ import express, {
 } from "express";
 import cors from "cors";
 import router from "./routes/routes.js";
-import { isHttpError } from "http-errors";
+import createHttpError, { isHttpError } from "http-errors";
 import morgan from "morgan";
 import logger from "./config/logger.js";
 
@@ -34,6 +34,9 @@ app.use(express.json());
 app.use(urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1", router);
+app.use((req: Request, res: Response, next: NextFunction) => {
+  next(createHttpError(404, `Route not found`));
+});
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   if (isHttpError(err)) {
