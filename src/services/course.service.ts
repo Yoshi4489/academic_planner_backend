@@ -10,7 +10,8 @@ import {
 import createHttpError from "http-errors";
 import type { CourseType, Grade, Plan } from "../generated/prisma/enums";
 import { findGPAByUserIdAndSemesterId } from "../repositories/gpa.repo";
-import { calculateCumGPA, calculateGPA, editGPA } from "./gpa.services";
+import { calculateCumGPA, calculateGPA } from "./gpa.services";
+import logger from "../config/logger";
 
 export const addCourse = async (
   user_id: string,
@@ -41,6 +42,7 @@ export const addCourse = async (
   await calculateGPA(data.semester_id, user_id);
   await calculateCumGPA(data.semester_id, user_id);
 
+  logger.info(`Course added: ${data.name} to semester ${data.semester_id} for user ${user_id}`);
   return course;
 };
 
@@ -91,6 +93,7 @@ export const editCourse = async (
     await calculateCumGPA(data.semester_id, user_id);
   }
 
+  logger.info(`Course updated: ${updatedCourse.name} for user ${user_id}`);
   return updatedCourse;
 };
 
@@ -110,6 +113,7 @@ export const getCourseById = async (
     throw createHttpError.NotFound("Course not found");
   }
 
+  logger.info(`Retrieved course: ${course.name} for user ${user_id}`);
   return course;
 };
 
@@ -123,6 +127,7 @@ export const getCoursesBySemesterId = async (
     throw createHttpError.NotFound("Semester not found");
   }
 
+  logger.info(`Retrieved courses for semester ${data.semester_id} for user ${user_id}`);
   return await findCoursesBySemesterId(data.semester_id);
 };
 
@@ -146,6 +151,7 @@ export const removeCourse = async (
 
   await calculateGPA(semester.id, user_id);
   await calculateCumGPA(semester.id, user_id);
+  logger.info(`Course removed: ${deletedCourse.name} from semester ${semester.id} for user ${user_id}`);
   return deletedCourse;
 };
 
@@ -164,5 +170,6 @@ export const removeCourseBySemesterId = async (
   await calculateGPA(semester.id, user_id);
   await calculateCumGPA(semester.id, user_id);
 
+  logger.info(`All courses removed from semester ${semester.id} for user ${user_id}`);
   return removedCourses;
 };

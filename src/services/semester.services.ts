@@ -9,6 +9,7 @@ import {
   updateSemester,
 } from "../repositories/semester.repo.js";
 import { addGPA, calculateCumGPA } from "./gpa.services.js";
+import logger from "../config/logger.js";
 
 export const addSemester = async (data: {
   year: number;
@@ -40,11 +41,13 @@ export const addSemester = async (data: {
 
   await calculateCumGPA(semester.id, data.user_id);
 
+  logger.info(`Semester added: ${data.year} ${data.term} for user ${data.user_id}`);
   return semester;
 };
 
 export const getSemesters = async (data: { user_id: string }) => {
   const semesters = await findSemesters(data);
+  logger.info(`Retrieved ${semesters.length} semesters for user ${data.user_id}`);
   return semesters;
 };
 
@@ -66,6 +69,7 @@ export const getSemesterById = async (
     );
   }
 
+  logger.info(`Retrieved semester ${data.id} for user ${user_id}`);
   return semester;
 };
 
@@ -111,6 +115,7 @@ export const editSemester = async (data: {
     }
   }
 
+  logger.info(`Semester edited: ${data.id} for user ${data.user_id} with data: ${JSON.stringify(data.data)}`);
   return semester;
 };
 
@@ -141,6 +146,7 @@ export const removeSemester = async (data: { id: string; user_id: string }) => {
     await calculateCumGPA(nextSemesterId, data.user_id);
   }
 
+  logger.info(`Semester removed: ${data.id} for user ${data.user_id}`);
   return semester;
 };
 
@@ -148,5 +154,6 @@ export const getSemesterAfterCurrentSemester = async (
   semester_id: string,
   user_id: string,
 ) => {
+  logger.info(`Retrieving semesters after semester ${semester_id} for user ${user_id}`);
   return await findSemestersAfterCurrentSemester(semester_id, user_id);
 };

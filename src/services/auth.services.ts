@@ -5,6 +5,7 @@ import {
   findUsers,
 } from "../repositories/auth.repo.js";
 import { signToken, verifyToken } from "../utils/jwt.js";
+import logger from "../config/logger.js";
 
 export const registerUser = async (
   name: string,
@@ -17,6 +18,7 @@ export const registerUser = async (
     "access",
   );
   const refresh_token = await signToken({ user_id: user.id }, "refresh");
+  logger.info(`New user registered: ${email}`);
   return { user, access_token, refresh_token };
 };
 
@@ -27,6 +29,7 @@ export const loginUser = async (email: string, password: string) => {
     "access",
   );
   const refresh_token = await signToken({ user_id: user.id }, "refresh");
+  logger.info(`User logged in: ${email}`);
   return { user, access_token, refresh_token };
 };
 
@@ -38,11 +41,13 @@ export const getUsers = async (id?: string, name?: string, email?: string) => {
   if (email !== undefined) filters.email = email;
 
   const users = await findUsers(filters);
+  logger.info(`Retrieved users: ${users.length}`);
   return users;
 };
 
 export const getUserById = async (id: string) => {
   const users = await findUsers({ id });
+  logger.info(`Retrieved user: ${id}`);
   return users.length > 0 ? users[0] : null;
 };
 
@@ -62,6 +67,7 @@ export const refreshToken = async (refreshToken: string) => {
   }
 
   const access_token = signToken({ user_id, email: user.email }, "access");
+  logger.info(`Token refreshed for user: ${user.email}`);
 
   return { access_token, user };
 };

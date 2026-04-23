@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt.js";
 import createHttpError from "http-errors";
+import logger from "../config/logger.js";
 
 type JwtPayload = {
   user_id: string;
@@ -35,6 +36,7 @@ export const authMiddleware = (
     req.user = decoded;
     next();
   } catch {
+    logger.warn(`Unauthorized access attempt - ${req.method} ${req.url}`);
     next(createHttpError.Unauthorized("Invalid token"));
   }
 };

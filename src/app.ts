@@ -37,8 +37,12 @@ app.use("/api/v1", router);
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   if (isHttpError(err)) {
+    if (err.status >= 500) {
+      logger.error(`${err.status} ${err.message}`);
+    }
     res.status(err.status).json({ message: err.message });
   } else {
+    logger.error(`Unexpected Error: ${err}`);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

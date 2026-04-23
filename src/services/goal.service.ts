@@ -6,6 +6,8 @@ import {
   findGoalByUserId,
   updateGoal,
 } from "../repositories/goal.repo";
+import logger from "../config/logger";
+import { log } from "node:console";
 
 export const addGoal = async (data: {
   user_id: string;
@@ -14,6 +16,7 @@ export const addGoal = async (data: {
   target_semester_id: string;
   is_achieved?: boolean;
 }) => {
+  logger.info(`Adding goal for user ${data.user_id} with target GPA ${data.target_gpa} for semester ${data.target_semester_id}`);
   return await createGoal(data);
 };
 
@@ -33,6 +36,7 @@ export const editGoal = async (
     throw createHttpError.NotFound("Goal not found");
   }
 
+  logger.info(`Editing goal ${goal_id} for user ${user_id} with data: ${JSON.stringify(data)}`);
   return await updateGoal(goal_id, data);
 };
 
@@ -43,6 +47,7 @@ export const removeGoal = async (user_id: string, goal_id: string) => {
     throw createHttpError.NotFound("Goal not found");
   }
 
+  logger.info(`Removing goal ${goal_id} for user ${user_id}`);
   return await deleteGoal(goal_id);
 };
 
@@ -53,6 +58,7 @@ export const getGoalByUserId = async (user_id: string) => {
     throw createHttpError.NotFound("No goals found");
   }
 
+  logger.info(`Retrieved ${goals.length} goals for user ${user_id}`);
   return goals;
 };
 
@@ -63,5 +69,6 @@ export const getGoalById = async (user_id: string, goal_id: string) => {
     throw createHttpError.NotFound("Goal not found");
   }
 
+  logger.info(`Retrieved goal ${goal_id} for user ${user_id}`);
   return goal;
 };

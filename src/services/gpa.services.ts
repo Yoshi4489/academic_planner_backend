@@ -12,6 +12,8 @@ import {
 } from "../repositories/gpa.repo";
 import { gradePointMap } from "../utils/grade";
 import { findAllSemestersBeforeCurrentSemester } from "../repositories/semester.repo";
+import logger from "../config/logger";
+import { log } from "node:console";
 
 export const addGPA = async (data: {
   semester_id: string;
@@ -29,6 +31,7 @@ export const addGPA = async (data: {
     throw createHttpError.NotFound("Semester not found");
   }
 
+  logger.info(`Adding GPA for semester ${data.semester_id} for user ${data.user_id} with GPA ${data.gpa} and cumulative GPA ${data.cum_gpa}`);
   return await createGPA(data);
 };
 
@@ -50,6 +53,7 @@ export const editGPA = async (
     throw createHttpError.NotFound("Semester not found");
   }
 
+  logger.info(`Editing GPA for semester ${semester_id} for user ${user_id} with data: ${JSON.stringify(data)}`);
   return await updateGPA(user_id, semester_id, data);
 };
 
@@ -60,6 +64,7 @@ export const removeGPA = async (semester_id: string, user_id: string) => {
     throw createHttpError.NotFound("Semester not found");
   }
 
+  logger.info(`Removing GPA for semester ${semester_id} for user ${user_id}`);
   return await deleteGPA(user_id, semester_id);
 };
 
@@ -73,10 +78,12 @@ export const getGPABySemesterId = async (
     throw createHttpError.NotFound("Semester not found");
   }
 
+  logger.info(`Retrieved GPA for semester ${semester_id} for user ${user_id}`);
   return await findGPAByUserIdAndSemesterId(user_id, semester_id);
 };
 
 export const getGPAByUserId = async (user_id: string) => {
+  logger.info(`Retrieved all GPAs for user ${user_id}`);
   return await findGPAByUserId(user_id);
 };
 
