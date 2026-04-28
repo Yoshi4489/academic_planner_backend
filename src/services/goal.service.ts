@@ -54,10 +54,6 @@ export const removeGoal = async (user_id: string, goal_id: string) => {
 export const getGoalByUserId = async (user_id: string) => {
   const goals = await findGoalByUserId(user_id);
 
-  if (!goals || goals.length === 0) {
-    throw createHttpError.NotFound("No goals found");
-  }
-
   logger.info(`Retrieved ${goals.length} goals for user ${user_id}`);
   return goals;
 };
