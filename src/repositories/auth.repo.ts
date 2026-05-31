@@ -1,6 +1,16 @@
 import createHttpError from "http-errors";
 import prisma from "../config/prisma.js";
-import { compare, genSalt, hash } from "bcrypt";
+import { compare, hash } from "bcrypt";
+import { randomBytes, createHash } from "crypto";
+
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS ?? "12", 10);
+
+// Valid OTP purposes — must match the OtpPurpose enum in schema.prisma
+const VALID_OTP_PURPOSES = ["reset_password"] as const;
+export type OtpPurpose = (typeof VALID_OTP_PURPOSES)[number];
+
+export const isValidOtpPurpose = (value: string): value is OtpPurpose =>
+  VALID_OTP_PURPOSES.includes(value as OtpPurpose);
 
 export const createUser = async (data: {
   name: string;
@@ -15,8 +25,7 @@ export const createUser = async (data: {
     throw createHttpError.Conflict("This email has been used");
   }
 
-  const salt = await genSalt(10);
-  const hashedPassword = await hash(data.password, salt);
+  const hashedPassword = await hash(data.password, BCRYPT_ROUNDS);
 
   return await prisma.user.create({
     data: { ...data, password: hashedPassword },
@@ -66,4 +75,130 @@ export const findUsers = async (
       created_at: true,
     },
   });
+};
+
+export const createOTP = async (email: string, otp: string) => {
+  // Fix #8: purpose is now a typed enum value, not a free-form string
+  await prisma.otp.deleteMany({
+    where: {
+      email,
+      purpose: "reset_password",
+    },
+  });
+
+  const hashedOtp = await hash(otp, BCRYPT_ROUNDS);
+
+  await prisma.otp.create({
+    data: {
+      email,
+      otp: hashedOtp,
+      purpose: "reset_password",
+      expires_at: new Date(Date.now() + 15 * 60 * 1000),
+    },
+  });
+};
+
+export const verifyOTP = async (
+  email: string,
+  otp: string,
+  purpose: OtpPurpose,
+) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw createHttpError.NotFound("User not found");
+  }
+
+  const otpRecord = await prisma.otp.findUnique({
+    where: {
+      email_purpose: { email, purpose },
+    },
+  });
+
+  if (!otpRecord) {
+    throw createHttpError.NotFound("Invalid or expired OTP");
+  }
+
+  // Fix #1: check attempts BEFORE verifying so the gate is accurate
+  if (otpRecord.attempts >= 5) {
+    throw createHttpError.TooManyRequests("Too many failed attempts");
+  }
+
+  // Fix #1: check expiry before doing bcrypt work
+  if (otpRecord.expires_at < new Date()) {
+    await prisma.otp.delete({ where: { id: otpRecord.id } });
+    throw createHttpError.BadRequest("OTP has expired");
+  }
+
+  const isMatched = await compare(otp, otpRecord.otp);
+
+  if (!isMatched) {
+    // Fix #1: only increment on failure
+    await prisma.otp.update({
+      where: { id: otpRecord.id },
+      data: { attempts: { increment: 1 } },
+    });
+    throw createHttpError.BadRequest("Invalid OTP");
+  }
+
+  // Fix #2: delete the OTP record immediately on success so it can't be reused
+  await prisma.otp.delete({ where: { id: otpRecord.id } });
+
+  // Fix #6: store a SHA-256 hash of the reset token, not the raw value
+  const resetToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(resetToken).digest("hex");
+
+  await prisma.passwordResetToken.create({
+    data: {
+      token: tokenHash,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000),
+      user_id: user.id,
+    },
+  });
+
+  // Return the raw token to the caller (sent to the user); only the hash is stored
+  return resetToken;
+};
+
+export const updatePassword = async (token: string, newPassword: string) => {
+  // Fix #6: hash the incoming token before looking it up
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const resetTokenRecord = await prisma.passwordResetToken.findUnique({
+    where: { token: tokenHash },
+  });
+
+  if (!resetTokenRecord) {
+    throw createHttpError.NotFound("Invalid or expired reset token");
+  }
+
+  if (resetTokenRecord.expires_at < new Date()) {
+    // Fix #10: clean up stale tokens instead of leaving them in the DB
+    await prisma.passwordResetToken.delete({
+      where: { id: resetTokenRecord.id },
+    });
+    throw createHttpError.BadRequest("Reset token has expired");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: resetTokenRecord.user_id },
+  });
+
+  if (!user) {
+    throw createHttpError.NotFound("User not found");
+  }
+
+  // Fix #9: use the shared BCRYPT_ROUNDS constant
+  const hashedPassword = await hash(newPassword, BCRYPT_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hashedPassword },
+  });
+
+  await prisma.passwordResetToken.delete({
+    where: { id: resetTokenRecord.id },
+  });
+
+  return { message: "Password reset successful" };
 };

@@ -4,6 +4,9 @@ import {
   handleLogin,
   handleRefreshToken,
   handleRegister,
+  handleResetPassword,
+  handleVerifyOTP,
+  handleRequestPasswordReset,
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middleware/middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -18,5 +21,11 @@ authRouter.post("/login", validate(loginSchema), handleLogin);
 authRouter.get("/users", authMiddleware, handleGetUsers);
 
 authRouter.post("/refresh-token", handleRefreshToken);
+
+authRouter.post("/request-password-reset", handleRequestPasswordReset);
+
+authRouter.post("/reset-password", handleResetPassword);
+
+authRouter.post("/verify-otp", handleVerifyOTP);
 
 export default authRouter;

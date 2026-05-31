@@ -1,11 +1,18 @@
 import createHttpError from "http-errors";
 import {
+  createOTP,
   createUser,
   findUserByEmailAndPassword,
   findUsers,
+  updatePassword,
+  verifyOTP,
+  type OtpPurpose,
+  isValidOtpPurpose,
 } from "../repositories/auth.repo.js";
 import { signToken, verifyToken } from "../utils/jwt.js";
 import logger from "../config/logger.js";
+import { sendEmail } from "../utils/mail.js";
+import crypto from "crypto";
 
 export const registerUser = async (
   name: string,
@@ -70,4 +77,48 @@ export const refreshToken = async (refreshToken: string) => {
   logger.info(`Token refreshed for user: ${user.email}`);
 
   return { access_token, user };
+};
+
+export const requestResetPassword = async (email: string) => {
+  const users = await findUsers({ email });
+
+  // Fix #3: findUsers returns an array, so check .length — not truthiness
+  // Prevent email enumeration by returning the same message regardless
+  if (users.length === 0) {
+    return {
+      message:
+        "If an account with that email exists, a reset code has been sent.",
+    };
+  }
+
+  const otp = crypto.randomInt(100000, 1000000).toString();
+
+  await createOTP(email, otp);
+
+  await sendEmail({
+    to: email,
+    subject: "Password Reset Code",
+    html: `
+      <h2>Password Reset</h2>
+      <p>Your verification code is:</p>
+      <h1>${otp}</h1>
+      <p>This code expires in 15 minutes.</p>
+    `,
+  });
+
+  return {
+    message:
+      "If an account with that email exists, a reset code has been sent.",
+  };
+};
+
+export const checkOTP = async (email: string, otp: string, purpose: OtpPurpose) => {
+  return await verifyOTP(email, otp, purpose);
+};
+
+export const resetPassword = async (
+  resetToken: string,
+  newPassword: string,
+) => {
+  return await updatePassword(resetToken, newPassword);
 };

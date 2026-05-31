@@ -47,6 +47,7 @@ model User {
   semesters Semester[]
   gpa       GPA[]
   chat_logs ChatLog[]
+  password_reset_tokens PasswordResetToken[]
 }
 
 model Semester {
@@ -126,4 +127,35 @@ model ChatLog {
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+}
+
+enum OtpPurpose {
+  reset_password
+}
+
+model Otp {
+  id         String     @id @default(uuid())
+  email      String
+  otp        String
+  purpose    OtpPurpose
+  attempts   Int        @default(0)
+  expires_at DateTime
+  created_at DateTime   @default(now())
+
+  @@unique([email, purpose])
+  @@index([email])
+  @@index([expires_at])
+}
+
+model PasswordResetToken {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  user_id     String
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
 }
