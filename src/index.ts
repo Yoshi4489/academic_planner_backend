@@ -1,8 +1,6 @@
+import "dotenv/config";
 import app from "./app.js";
-import dotenv from "dotenv";
 import logger from "./config/logger.js";
-
-dotenv.config({ quiet: true });
 
 const PORT = process.env.PORT || 8080;
 
