@@ -8,7 +8,10 @@ import {
   handleUpdateSemester,
 } from "../controllers/semester.controller";
 import { validate } from "../middleware/validate.middleware";
-import { createSemesterSchema } from "../utils/semester.validator";
+import {
+  createSemesterSchema,
+  updateSemesterSchema,
+} from "../utils/semester.validator";
 
 const semesterRouter = Router();
 
@@ -19,7 +22,12 @@ semesterRouter.post(
   handleCreateSemester,
 );
 
-semesterRouter.patch("/updateSemester/:semester_id", authMiddleware, handleUpdateSemester);
+semesterRouter.patch(
+  "/updateSemester/:semester_id",
+  authMiddleware,
+  validate(updateSemesterSchema),
+  handleUpdateSemester,
+);
 
 semesterRouter.delete("/deleteSemester/:semester_id", authMiddleware, handleDeleteSemester);
 

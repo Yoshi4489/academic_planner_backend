@@ -1,17 +1,40 @@
 import { z } from "zod";
 
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be between 8 and 32 characters long")
+  .max(32, "Password must be between 8 and 32 characters long");
+
 export const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters long"),
-  email: z.string().email("Invalid email address"),
-  password: z
+  name: z
     .string()
-    .min(8, "Password must be between 8 and 32 characters long")
-    .max(32, "Password must be between 8 and 32 characters long"),
+    .trim()
+    .min(2, "Name must be at least 2 characters long")
+    .max(100, "Name must be at most 100 characters long"),
+  email: z.string().trim().email("Invalid email address"),
+  password: passwordSchema,
 });
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string(),
+  email: z.string().trim().email("Invalid email address"),
+  password: z.string().min(1).max(72),
+});
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().trim().email("Invalid email address"),
+});
+
+export const verifyOtpSchema = z.object({
+  email: z.string().trim().email("Invalid email address"),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
+  purpose: z.literal("reset_password"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/i, "Invalid password-reset token"),
+  newPassword: passwordSchema,
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

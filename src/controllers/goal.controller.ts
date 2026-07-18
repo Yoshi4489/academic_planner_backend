@@ -22,7 +22,7 @@ export const handleAddGoal = async (
       throw createHttpError.Unauthorized("User not authenticated");
     }
 
-    if (!target_gpa || !target_semester_id) {
+    if (target_gpa === undefined || !target_semester_id) {
       throw createHttpError.BadRequest("Invalid required fields");
     }
 
@@ -61,10 +61,6 @@ export const handleEditGoal = async (
 
     if (!goal_id || Array.isArray(goal_id)) {
       throw createHttpError.BadRequest("Invalid goal ID");
-    }
-
-    if (!name && !target_gpa && !target_semester_id) {
-      throw createHttpError.BadRequest("No fields to update");
     }
 
     const user_id = user.user_id;

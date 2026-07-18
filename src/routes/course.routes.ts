@@ -9,7 +9,10 @@ import {
   handleGetCourseBySemesterId,
 } from "../controllers/course.controller";
 import { validate } from "../middleware/validate.middleware";
-import { createCourseSchema } from "../utils/course.validator";
+import {
+  createCourseSchema,
+  updateCourseSchema,
+} from "../utils/course.validator";
 
 const courseRouter = Router();
 
@@ -20,7 +23,12 @@ courseRouter.post(
   handleCreateCourse,
 );
 
-courseRouter.patch("/editCourse/:course_id", authMiddleware, handleEditCourse);
+courseRouter.patch(
+  "/editCourse/:course_id",
+  authMiddleware,
+  validate(updateCourseSchema),
+  handleEditCourse,
+);
 
 courseRouter.delete(
   "/deleteCourse/:course_id",

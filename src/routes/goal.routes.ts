@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../middleware/middleware";
 import { validate } from "../middleware/validate.middleware";
-import { createGoalSchema } from "../utils/goal.validator";
+import { createGoalSchema, updateGoalSchema } from "../utils/goal.validator";
 import {
   handleAddGoal,
   handleEditGoal,
@@ -19,7 +19,12 @@ goalRouter.post(
   handleAddGoal,
 );
 
-goalRouter.patch("/updateGoal/:goal_id", authMiddleware, handleEditGoal);
+goalRouter.patch(
+  "/updateGoal/:goal_id",
+  authMiddleware,
+  validate(updateGoalSchema),
+  handleEditGoal,
+);
 
 goalRouter.delete("/deleteGoal/:goal_id", authMiddleware, handleRemoveGoal);
 

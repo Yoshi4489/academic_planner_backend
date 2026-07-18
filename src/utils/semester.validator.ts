@@ -1,10 +1,26 @@
 import z from "zod";
 
-export const createSemesterSchema = z.object({ 
-    year: z.number().int(),
-    term: z.string().min(1, "Term is required"),
-    term_no: z.number().int().min(1, "Term number must be at least 1"),
-    is_complete: z.boolean().default(false),
-})
+const semesterFields = {
+  year: z.number().int().min(1900).max(2200),
+  term: z.string().trim().min(1, "Term is required").max(50),
+  term_no: z.number().int().min(1).max(12),
+  is_complete: z.boolean(),
+};
 
-export type createSemesterInput = z.infer<typeof createSemesterSchema>;
+export const createSemesterSchema = z.object({
+  ...semesterFields,
+  is_complete: semesterFields.is_complete.default(false),
+});
+
+export const updateSemesterSchema = z
+  .object({
+    year: semesterFields.year.optional(),
+    term: semesterFields.term.optional(),
+    term_no: semesterFields.term_no.optional(),
+    is_complete: semesterFields.is_complete.optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one semester field is required",
+  });
+
+export type CreateSemesterInput = z.infer<typeof createSemesterSchema>;
