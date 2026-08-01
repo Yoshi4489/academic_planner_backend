@@ -12,6 +12,7 @@ import {
 import { updateCourseSchema } from "../src/utils/course.validator.js";
 import { updateGoalSchema } from "../src/utils/goal.validator.js";
 import { updateSemesterSchema } from "../src/utils/semester.validator.js";
+import { meetingSchema, taskSchema } from "../src/utils/planner.validator.js";
 
 test("production CORS accepts only configured origins and non-browser clients", () => {
   const allowed = getAllowedOrigins("https://planner.example.com");
@@ -80,4 +81,23 @@ test("mutation schemas reject empty and unknown-only updates", () => {
     assert.equal(schema.safeParse({}).success, false);
     assert.equal(schema.safeParse({ admin: true }).success, false);
   }
+});
+
+test("planner validation rejects invalid meetings and accepts UTC task dates", () => {
+  assert.equal(
+    meetingSchema.safeParse({
+      weekday: 1,
+      start_minute: 600,
+      end_minute: 540,
+    }).success,
+    false,
+  );
+  assert.equal(
+    taskSchema.safeParse({
+      title: "Final exam",
+      type: "EXAM",
+      due_at: "2026-12-01T02:00:00.000Z",
+    }).success,
+    true,
+  );
 });
