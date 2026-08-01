@@ -20,7 +20,17 @@ export const handleCreateCourse = async (
   next: NextFunction,
 ) => {
   try {
-    const { name, grade, credit, type, semester_id, category } = req.body;
+    const {
+      name,
+      grade,
+      credit,
+      type,
+      semester_id,
+      category,
+      course_code,
+      instructor,
+      notes,
+    } = req.body;
     const user = req.user;
 
     if (!user || !user.user_id) {
@@ -40,6 +50,9 @@ export const handleCreateCourse = async (
       type,
       semester_id,
       category,
+      course_code,
+      instructor,
+      notes,
     });
 
     res.status(201).json({
@@ -117,7 +130,17 @@ export const handleEditCourse = async (
 ) => {
   try {
     const { course_id } = req.params;
-    const { name, grade, credit, type, semester_id, category } = req.body;
+    const {
+      name,
+      grade,
+      credit,
+      type,
+      semester_id,
+      category,
+      course_code,
+      instructor,
+      notes,
+    } = req.body;
     const user = req.user;
 
     if (!user || !user.user_id) {
@@ -136,6 +159,9 @@ export const handleEditCourse = async (
       type,
       semester_id,
       category,
+      course_code,
+      instructor,
+      notes,
     });
 
     res.status(200).json({

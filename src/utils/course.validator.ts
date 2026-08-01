@@ -13,6 +13,9 @@ export const createCourseSchema = z.object({
     ["GEN_ED", "MAJOR_REQUIRED", "MAJOR_ELECTIVE", "MINOR", "FREE_ELECTIVE"],
     "Invalid course category",
   ),
+  course_code: z.string().trim().max(30).nullable().optional(),
+  instructor: z.string().trim().max(100).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
 });
 
 export const updateCourseSchema = createCourseSchema

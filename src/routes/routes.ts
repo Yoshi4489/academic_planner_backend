@@ -4,6 +4,8 @@ import semesterRouter from "./semester.routes.js";
 import courseRouter from "./course.routes.js";
 import goalRouter from "./goal.routes.js";
 import gpaRouter from "./gpa.routes.js";
+import plannerRouter from "./planner.routes.js";
+import dataTransferRouter from "./data-transfer.routes.js";
 
 const router = Router();
 
@@ -12,5 +14,7 @@ router.use("/semesters", semesterRouter);
 router.use("/courses", courseRouter);
 router.use("/goals", goalRouter);
 router.use("/gpa", gpaRouter);
+router.use("/planner", plannerRouter);
+router.use("/data", dataTransferRouter);
 
 export default router;

@@ -1,175 +1,117 @@
-import { getSemesterById } from "./semester.services";
-import {
-  createCourse,
-  deleteCourse,
-  deleteCoursesBySemesterId,
-  findCourseById,
-  findCoursesBySemesterId,
-  updateCourse,
-} from "../repositories/course.repo";
 import createHttpError from "http-errors";
-import type { CourseType, Grade, Plan } from "../generated/prisma/enums";
-import { findGPAByUserIdAndSemesterId } from "../repositories/gpa.repo";
-import { calculateCumGPA, calculateGPA } from "./gpa.services";
-import logger from "../config/logger";
+import type { CourseType, Grade, Plan } from "../generated/prisma/enums.js";
+import prisma from "../config/prisma.js";
+import logger from "../config/logger.js";
+import { gradePointMap } from "../utils/grade.js";
+import { recalculateUserGpas } from "./gpa.services.js";
 
-export const addCourse = async (
-  user_id: string,
-  data: {
-    name: string;
-    grade: Grade;
-    credit: number;
-    type: Plan;
-    semester_id: string;
-    category: CourseType;
-  },
-) => {
-  const semester = await getSemesterById(user_id, { id: data.semester_id });
+type CourseInput = {
+  name: string;
+  grade: Grade;
+  credit: number;
+  type: Plan;
+  semester_id: string;
+  category: CourseType;
+  course_code?: string | null;
+  instructor?: string | null;
+  notes?: string | null;
+};
 
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.NotFound("Semester not found");
-  }
+export const addCourse = async (userId: string, data: CourseInput) => {
+  const course = await prisma.$transaction(async (tx) => {
+    const semester = await tx.semester.findFirst({
+      where: { id: data.semester_id, user_id: userId },
+    });
+    if (!semester) throw createHttpError.NotFound("Semester not found");
 
-  const GPA = await findGPAByUserIdAndSemesterId(user_id, data.semester_id);
-
-  if (!GPA) {
-    throw createHttpError.InternalServerError(
-      "GPA record not found for the semester. Please contact support.",
-    );
-  }
-  const course = await createCourse(data);
-
-  await calculateGPA(data.semester_id, user_id);
-  await calculateCumGPA(data.semester_id, user_id);
-
-  logger.info(`Course added: ${data.name} to semester ${data.semester_id} for user ${user_id}`);
+    const created = await tx.course.create({
+      data: { ...data, grade_point: gradePointMap[data.grade] },
+    });
+    await recalculateUserGpas(userId, tx);
+    return created;
+  });
+  logger.info(`Course added: ${data.name} for user ${userId}`);
   return course;
 };
 
 export const editCourse = async (
-  course_id: string,
-  user_id: string,
-  data: Partial<{
-    name: string;
-    grade: Grade;
-    credit: number;
-    type: Plan;
-    semester_id: string;
-    category: CourseType;
-  }>,
+  courseId: string,
+  userId: string,
+  data: Partial<CourseInput>,
 ) => {
-  const course = await findCourseById({ course_id });
-  if (!course) throw createHttpError.NotFound("Course not found");
-
-  const semester = await getSemesterById(user_id, { id: course.semester_id });
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.Forbidden("You don't have permission");
-  }
-
-  if (data.semester_id) {
-    const newSemester = await getSemesterById(user_id, {
-      id: data.semester_id,
+  const updated = await prisma.$transaction(async (tx) => {
+    const course = await tx.course.findFirst({
+      where: { id: courseId, semester: { user_id: userId } },
     });
-    if (!newSemester || newSemester.user_id !== user_id) {
-      throw createHttpError.NotFound("Semester not found");
+    if (!course) throw createHttpError.NotFound("Course not found");
+
+    if (data.semester_id) {
+      const target = await tx.semester.findFirst({
+        where: { id: data.semester_id, user_id: userId },
+      });
+      if (!target) throw createHttpError.NotFound("Semester not found");
     }
-  }
 
-  const GPA = await findGPAByUserIdAndSemesterId(user_id, course.semester_id);
-
-  if (!GPA) {
-    throw createHttpError.InternalServerError(
-      "GPA record not found for the semester. Please contact support.",
-    );
-  }
-
-  const updatedCourse = await updateCourse(course_id, data);
-
-  await calculateGPA(course.semester_id, user_id);
-  await calculateCumGPA(course.semester_id, user_id);
-
-  if (data.semester_id && data.semester_id !== course.semester_id) {
-    await calculateGPA(data.semester_id, user_id);
-    await calculateCumGPA(data.semester_id, user_id);
-  }
-
-  logger.info(`Course updated: ${updatedCourse.name} for user ${user_id}`);
-  return updatedCourse;
+    const result = await tx.course.update({
+      where: { id: courseId },
+      data: {
+        ...data,
+        ...(data.grade ? { grade_point: gradePointMap[data.grade] } : {}),
+      },
+    });
+    await recalculateUserGpas(userId, tx);
+    return result;
+  });
+  logger.info(`Course updated: ${updated.name} for user ${userId}`);
+  return updated;
 };
 
 export const getCourseById = async (
-  user_id: string,
+  userId: string,
   data: { course_id: string },
 ) => {
-  const course = await findCourseById(data);
-
-  if (!course) {
-    throw createHttpError.NotFound("Course not found");
-  }
-
-  const semester = await getSemesterById(user_id, { id: course.semester_id });
-
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.NotFound("Course not found");
-  }
-
-  logger.info(`Retrieved course: ${course.name} for user ${user_id}`);
+  const course = await prisma.course.findFirst({
+    where: { id: data.course_id, semester: { user_id: userId } },
+  });
+  if (!course) throw createHttpError.NotFound("Course not found");
   return course;
 };
 
 export const getCoursesBySemesterId = async (
-  user_id: string,
+  userId: string,
   data: { semester_id: string },
 ) => {
-  const semester = await getSemesterById(user_id, { id: data.semester_id });
-
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  logger.info(`Retrieved courses for semester ${data.semester_id} for user ${user_id}`);
-  return await findCoursesBySemesterId(data.semester_id);
+  const semester = await prisma.semester.findFirst({
+    where: { id: data.semester_id, user_id: userId },
+  });
+  if (!semester) throw createHttpError.NotFound("Semester not found");
+  return prisma.course.findMany({ where: { semester_id: data.semester_id } });
 };
 
 export const removeCourse = async (
-  user_id: string,
+  userId: string,
   data: { course_id: string },
-) => {
-  const course = await findCourseById(data);
-
-  if (!course) {
-    throw createHttpError.NotFound("Course not found");
-  }
-
-  const semester = await getSemesterById(user_id, { id: course.semester_id });
-
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.NotFound("Semester Not Found");
-  }
-
-  const deletedCourse = await deleteCourse(data.course_id);
-
-  await calculateGPA(semester.id, user_id);
-  await calculateCumGPA(semester.id, user_id);
-  logger.info(`Course removed: ${deletedCourse.name} from semester ${semester.id} for user ${user_id}`);
-  return deletedCourse;
-};
+) => prisma.$transaction(async (tx) => {
+  const course = await tx.course.findFirst({
+    where: { id: data.course_id, semester: { user_id: userId } },
+  });
+  if (!course) throw createHttpError.NotFound("Course not found");
+  const deleted = await tx.course.delete({ where: { id: data.course_id } });
+  await recalculateUserGpas(userId, tx);
+  return deleted;
+});
 
 export const removeCourseBySemesterId = async (
-  user_id: string,
+  userId: string,
   data: { semester_id: string },
-) => {
-  const semester = await getSemesterById(user_id, { id: data.semester_id });
-
-  if (!semester || semester.user_id !== user_id) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  const removedCourses = await deleteCoursesBySemesterId(data.semester_id);
-
-  await calculateGPA(semester.id, user_id);
-  await calculateCumGPA(semester.id, user_id);
-
-  logger.info(`All courses removed from semester ${semester.id} for user ${user_id}`);
-  return removedCourses;
-};
+) => prisma.$transaction(async (tx) => {
+  const semester = await tx.semester.findFirst({
+    where: { id: data.semester_id, user_id: userId },
+  });
+  if (!semester) throw createHttpError.NotFound("Semester not found");
+  const deleted = await tx.course.deleteMany({
+    where: { semester_id: data.semester_id },
+  });
+  await recalculateUserGpas(userId, tx);
+  return deleted;
+});
