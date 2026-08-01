@@ -37,5 +37,26 @@ export const resetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+export const logoutSchema = z.object({
+  refresh_token: z.string().min(32).max(200),
+});
+
+export const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100).optional(),
+    email: z.string().trim().email().optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, "At least one field is required");
+
+export const changePasswordSchema = z.object({
+  current_password: z.string().min(1).max(72),
+  new_password: passwordSchema,
+});
+
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1).max(72),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

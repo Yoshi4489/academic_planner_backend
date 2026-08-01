@@ -3,25 +3,20 @@ import ms from "ms";
 
 const SECRET = {
   access: process.env.ACCESS_SECRET_KEY,
-  refresh: process.env.REFRESH_SECRET_KEY,
 };
 
 const EXPIRES_IN = {
   access: Math.floor(ms("1h") / 1000),
-  refresh: Math.floor(ms("30d") / 1000),
 };
 
-type TokenType = "access" | "refresh";
-
 export const signToken = (
-  payload: { user_id: string; email?: string },
-  type: TokenType,
+  payload: { user_id: string; email: string },
 ) => {
-  return jwt.sign(payload, SECRET[type] as string, {
-    expiresIn: EXPIRES_IN[type],
+  return jwt.sign(payload, SECRET.access as string, {
+    expiresIn: EXPIRES_IN.access,
   });
 };
 
-export const verifyToken = (token: string, type: TokenType) => {
-  return jwt.verify(token, SECRET[type] as string);
+export const verifyToken = (token: string) => {
+  return jwt.verify(token, SECRET.access as string);
 };

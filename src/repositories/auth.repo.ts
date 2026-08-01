@@ -77,6 +77,49 @@ export const findUsers = async (
   });
 };
 
+export const findUserById = async (id: string) =>
+  prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true, created_at: true },
+  });
+
+export const updateUserProfile = async (
+  id: string,
+  data: { name?: string; email?: string },
+) => prisma.user.update({
+  where: { id },
+  data,
+  select: { id: true, name: true, email: true, created_at: true },
+});
+
+export const changeUserPassword = async (
+  id: string,
+  currentPassword: string,
+  newPassword: string,
+) => {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || !(await compare(currentPassword, user.password))) {
+    throw createHttpError.Unauthorized("Current password is incorrect");
+  }
+  const password = await hash(newPassword, BCRYPT_ROUNDS);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id }, data: { password } }),
+    prisma.refreshSession.updateMany({
+      where: { user_id: id, revoked_at: null },
+      data: { revoked_at: new Date() },
+    }),
+    prisma.passwordResetToken.deleteMany({ where: { user_id: id } }),
+  ]);
+};
+
+export const deleteUserAccount = async (id: string, password: string) => {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || !(await compare(password, user.password))) {
+    throw createHttpError.Unauthorized("Password is incorrect");
+  }
+  await prisma.user.delete({ where: { id } });
+};
+
 export const createOTP = async (email: string, otp: string) => {
   // Fix #8: purpose is now a typed enum value, not a free-form string
   await prisma.otp.deleteMany({
@@ -144,6 +187,10 @@ export const verifyOTP = async (
   // Fix #2: delete the OTP record immediately on success so it can't be reused
   await prisma.otp.delete({ where: { id: otpRecord.id } });
 
+  await prisma.passwordResetToken.deleteMany({
+    where: { user_id: user.id },
+  });
+
   // Fix #6: store a SHA-256 hash of the reset token, not the raw value
   const resetToken = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(resetToken).digest("hex");
@@ -191,14 +238,19 @@ export const updatePassword = async (token: string, newPassword: string) => {
   // Fix #9: use the shared BCRYPT_ROUNDS constant
   const hashedPassword = await hash(newPassword, BCRYPT_ROUNDS);
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { password: hashedPassword },
-  });
-
-  await prisma.passwordResetToken.delete({
-    where: { id: resetTokenRecord.id },
-  });
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    }),
+    prisma.passwordResetToken.deleteMany({
+      where: { user_id: user.id },
+    }),
+    prisma.refreshSession.updateMany({
+      where: { user_id: user.id, revoked_at: null },
+      data: { revoked_at: new Date() },
+    }),
+  ]);
 
   return { message: "Password reset successful" };
 };

@@ -2,12 +2,17 @@ import type { Response, NextFunction, Request } from "express";
 import createHttpError from "http-errors";
 import {
   checkOTP,
-  getUsers,
   loginUser,
+  logoutAllSessions,
+  logoutUser,
   refreshToken,
   registerUser,
   requestResetPassword,
   resetPassword,
+  getUserById,
+  updateProfile,
+  changePassword,
+  deleteAccount,
 } from "../services/auth.services.js";
 import { isValidOtpPurpose } from "../repositories/auth.repo.js";
 
@@ -27,6 +32,7 @@ export const handleRegister = async (
       name,
       password,
       email,
+      { deviceInfo: req.get("user-agent"), ipAddress: req.ip },
     );
 
     return res.status(201).json({
@@ -55,6 +61,7 @@ export const handleLogin = async (
     const { user, access_token, refresh_token } = await loginUser(
       email,
       password,
+      { deviceInfo: req.get("user-agent"), ipAddress: req.ip },
     );
 
     return res.status(200).json({
@@ -62,26 +69,6 @@ export const handleLogin = async (
       user,
       access_token,
       refresh_token,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Fix #11: ensure this route is protected by your auth middleware at the router level
-export const handleGetUsers = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const { id, name, email } = req.query;
-
-    const users = await getUsers(id as string, name as string, email as string);
-
-    return res.status(200).json({
-      message: "Users retrieved successfully",
-      users,
     });
   } catch (error) {
     next(error);
@@ -100,11 +87,15 @@ export const handleRefreshToken = async (
       throw createHttpError.BadRequest("Invalid token");
     }
 
-    const { access_token, user } = await refreshToken(token);
+    const { access_token, refresh_token, user } = await refreshToken(token, {
+      deviceInfo: req.get("user-agent"),
+      ipAddress: req.ip,
+    });
 
     return res.status(200).json({
       message: "Token refreshed successfully",
       access_token,
+      refresh_token,
       user,
     });
   } catch (error) {
@@ -181,6 +172,97 @@ export const handleResetPassword = async (
     const result = await resetPassword(token, newPassword);
 
     return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleLogout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    const { refresh_token } = req.body as { refresh_token?: string };
+    if (!refresh_token) throw createHttpError.BadRequest("Refresh token is required");
+    await logoutUser(req.user.user_id, refresh_token);
+    return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleLogoutAll = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    await logoutAllSessions(req.user.user_id);
+    return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleGetProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    const user = await getUserById(req.user.user_id);
+    if (!user) throw createHttpError.NotFound("User not found");
+    return res.status(200).json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleUpdateProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    const user = await updateProfile(req.user.user_id, req.body);
+    return res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleChangePassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    const result = await changePassword(
+      req.user.user_id,
+      req.body.current_password,
+      req.body.new_password,
+    );
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleDeleteAccount = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) throw createHttpError.Unauthorized();
+    await deleteAccount(req.user.user_id, req.body.password);
+    return res.status(204).send();
   } catch (error) {
     next(error);
   }

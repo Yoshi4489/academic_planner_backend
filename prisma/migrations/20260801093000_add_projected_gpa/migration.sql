@@ -1,0 +1,4 @@
+ALTER TABLE "GPA"
+  ADD COLUMN "projected_gpa" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  ADD COLUMN "projected_total_credits" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "projected_total_grade_points" DOUBLE PRECISION NOT NULL DEFAULT 0;

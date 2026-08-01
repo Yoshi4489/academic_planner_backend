@@ -8,34 +8,52 @@ import {
   verifyOTP,
   type OtpPurpose,
   isValidOtpPurpose,
+  findUserById,
+  updateUserProfile,
+  changeUserPassword,
+  deleteUserAccount,
 } from "../repositories/auth.repo.js";
-import { signToken, verifyToken } from "../utils/jwt.js";
+import { signToken } from "../utils/jwt.js";
 import logger from "../config/logger.js";
 import { sendEmail } from "../utils/mail.js";
 import crypto from "crypto";
+import {
+  createRefreshSession,
+  revokeAllRefreshSessions,
+  revokeRefreshSession,
+  rotateRefreshSession,
+} from "../repositories/session.repo.js";
+
+type SessionMetadata = {
+  deviceInfo?: string | undefined;
+  ipAddress?: string | undefined;
+};
 
 export const registerUser = async (
   name: string,
   password: string,
   email: string,
+  metadata: SessionMetadata = {},
 ) => {
   const user = await createUser({ name, password, email });
   const access_token = await signToken(
     { user_id: user.id, email: user.email },
-    "access",
   );
-  const refresh_token = await signToken({ user_id: user.id }, "refresh");
+  const refresh_token = await createRefreshSession(user.id, metadata);
   logger.info(`New user registered: ${email}`);
   return { user, access_token, refresh_token };
 };
 
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (
+  email: string,
+  password: string,
+  metadata: SessionMetadata = {},
+) => {
   const user = await findUserByEmailAndPassword({ email, password });
   const access_token = await signToken(
     { user_id: user.id, email: user.email },
-    "access",
   );
-  const refresh_token = await signToken({ user_id: user.id }, "refresh");
+  const refresh_token = await createRefreshSession(user.id, metadata);
   logger.info(`User logged in: ${email}`);
   return { user, access_token, refresh_token };
 };
@@ -53,31 +71,45 @@ export const getUsers = async (id?: string, name?: string, email?: string) => {
 };
 
 export const getUserById = async (id: string) => {
-  const users = await findUsers({ id });
+  const user = await findUserById(id);
   logger.info(`Retrieved user: ${id}`);
-  return users.length > 0 ? users[0] : null;
+  return user;
 };
 
-export const refreshToken = async (refreshToken: string) => {
-  const decoded = verifyToken(refreshToken, "refresh");
+export const updateProfile = async (
+  userId: string,
+  data: { name?: string; email?: string },
+) => updateUserProfile(userId, data);
 
-  if (!decoded) {
-    throw createHttpError.Unauthorized("Invalid token");
-  }
+export const changePassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) => {
+  await changeUserPassword(userId, currentPassword, newPassword);
+  return { message: "Password changed successfully" };
+};
 
-  const { user_id } = decoded as { user_id: string };
+export const deleteAccount = async (userId: string, password: string) => {
+  await deleteUserAccount(userId, password);
+};
 
-  const user = await getUserById(user_id);
-
-  if (!user) {
-    throw createHttpError.NotFound("User not found");
-  }
-
-  const access_token = signToken({ user_id, email: user.email }, "access");
+export const refreshToken = async (
+  refreshTokenValue: string,
+  metadata: SessionMetadata = {},
+) => {
+  const { refreshToken: rotatedToken, user } = await rotateRefreshSession(
+    refreshTokenValue,
+    metadata,
+  );
+  const access_token = signToken({ user_id: user.id, email: user.email });
   logger.info(`Token refreshed for user: ${user.email}`);
 
-  return { access_token, user };
+  return { access_token, refresh_token: rotatedToken, user };
 };
+
+export const logoutUser = revokeRefreshSession;
+export const logoutAllSessions = revokeAllRefreshSessions;
 
 export const requestResetPassword = async (email: string) => {
   const users = await findUsers({ email });

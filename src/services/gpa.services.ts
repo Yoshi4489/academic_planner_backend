@@ -1,19 +1,100 @@
 import createHttpError from "http-errors";
-import {
-  getSemesterAfterCurrentSemester,
-  getSemesterById,
-} from "./semester.services";
-import {
-  createGPA,
-  deleteGPA,
-  findGPAByUserId,
-  findGPAByUserIdAndSemesterId,
-  updateGPA,
-} from "../repositories/gpa.repo";
-import { gradePointMap } from "../utils/grade";
-import { findAllSemestersBeforeCurrentSemester } from "../repositories/semester.repo";
-import logger from "../config/logger";
-import { log } from "node:console";
+import prisma from "../config/prisma.js";
+import logger from "../config/logger.js";
+import { calculateSemesterMetrics } from "../utils/gpa-calculator.js";
+
+type GpaDb = Pick<typeof prisma, "semester" | "gPA">;
+
+const rounded = (value: number) => Number(value.toFixed(2));
+
+export const recalculateUserGpas = async (userId: string, db: GpaDb = prisma) => {
+  const semesters = await db.semester.findMany({
+    where: { user_id: userId },
+    orderBy: [{ year: "asc" }, { term_no: "asc" }],
+    include: { courses: true },
+  });
+
+  let cumulativeCredits = 0;
+  let cumulativeGradePoints = 0;
+
+  for (const semester of semesters) {
+    const metrics = calculateSemesterMetrics(semester.courses);
+
+    cumulativeCredits += metrics.actualCredits;
+    cumulativeGradePoints += metrics.actualPoints;
+
+    await db.gPA.upsert({
+      where: {
+        user_id_semester_id: { user_id: userId, semester_id: semester.id },
+      },
+      create: {
+        user_id: userId,
+        semester_id: semester.id,
+        gpa: metrics.actualGpa,
+        cum_gpa: cumulativeCredits
+          ? rounded(cumulativeGradePoints / cumulativeCredits)
+          : 0,
+        total_credits: metrics.actualCredits,
+        total_grade_points: metrics.actualPoints,
+        projected_gpa: metrics.projectedGpa,
+        projected_total_credits: metrics.projectedCredits,
+        projected_total_grade_points: metrics.projectedPoints,
+      },
+      update: {
+        gpa: metrics.actualGpa,
+        cum_gpa: cumulativeCredits
+          ? rounded(cumulativeGradePoints / cumulativeCredits)
+          : 0,
+        total_credits: metrics.actualCredits,
+        total_grade_points: metrics.actualPoints,
+        projected_gpa: metrics.projectedGpa,
+        projected_total_credits: metrics.projectedCredits,
+        projected_total_grade_points: metrics.projectedPoints,
+        calculated_at: new Date(),
+      },
+    });
+  }
+};
+
+const withAliases = <T extends {
+  gpa: number;
+  total_credits: number;
+  total_grade_points: number;
+}>(record: T) => ({
+  ...record,
+  actual_gpa: record.gpa,
+  actual_credits: record.total_credits,
+  actual_grade_points: record.total_grade_points,
+});
+
+export const getGPABySemesterId = async (
+  semesterId: string,
+  userId: string,
+) => {
+  const semester = await prisma.semester.findFirst({
+    where: { id: semesterId, user_id: userId },
+  });
+  if (!semester) throw createHttpError.NotFound("Semester not found");
+
+  const gpa = await prisma.gPA.findUnique({
+    where: { user_id_semester_id: { user_id: userId, semester_id: semesterId } },
+  });
+  logger.info(`Retrieved GPA for semester ${semesterId} for user ${userId}`);
+  return gpa ? withAliases(gpa) : null;
+};
+
+export const getGPAByUserId = async (userId: string) => {
+  const gpas = await prisma.gPA.findMany({ where: { user_id: userId } });
+  logger.info(`Retrieved all GPAs for user ${userId}`);
+  return gpas.map(withAliases);
+};
+
+// Backward-compatible entry points used by existing services.
+export const calculateGPA = async (_semesterId: string, userId: string) => {
+  await prisma.$transaction((tx) => recalculateUserGpas(userId, tx));
+};
+
+export const calculateCumGPA = calculateGPA;
 
 export const addGPA = async (data: {
   semester_id: string;
@@ -22,146 +103,4 @@ export const addGPA = async (data: {
   cum_gpa: number;
   total_credits: number;
   total_grade_points: number;
-}) => {
-  const semester = await getSemesterById(data.user_id, {
-    id: data.semester_id,
-  });
-
-  if (!semester) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  logger.info(`Adding GPA for semester ${data.semester_id} for user ${data.user_id} with GPA ${data.gpa} and cumulative GPA ${data.cum_gpa}`);
-  return await createGPA(data);
-};
-
-export const editGPA = async (
-  semester_id: string,
-  user_id: string,
-  data: {
-    gpa?: number;
-    cum_gpa?: number;
-    total_credits?: number;
-    total_grade_points?: number;
-  },
-) => {
-  const semester = await getSemesterById(user_id, {
-    id: semester_id,
-  });
-
-  if (!semester) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  logger.info(`Editing GPA for semester ${semester_id} for user ${user_id} with data: ${JSON.stringify(data)}`);
-  return await updateGPA(user_id, semester_id, data);
-};
-
-export const removeGPA = async (semester_id: string, user_id: string) => {
-  const semester = await getSemesterById(user_id, { id: semester_id });
-
-  if (!semester) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  logger.info(`Removing GPA for semester ${semester_id} for user ${user_id}`);
-  return await deleteGPA(user_id, semester_id);
-};
-
-export const getGPABySemesterId = async (
-  semester_id: string,
-  user_id: string,
-) => {
-  const semester = await getSemesterById(user_id, { id: semester_id });
-
-  if (!semester) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  logger.info(`Retrieved GPA for semester ${semester_id} for user ${user_id}`);
-  return await findGPAByUserIdAndSemesterId(user_id, semester_id);
-};
-
-export const getGPAByUserId = async (user_id: string) => {
-  logger.info(`Retrieved all GPAs for user ${user_id}`);
-  return await findGPAByUserId(user_id);
-};
-
-export const calculateCumGPA = async (semester_id: string, user_id: string) => {
-  const currentSemester = await getSemesterById(user_id, { id: semester_id });
-  const currentGPA = await findGPAByUserIdAndSemesterId(user_id, semester_id);
-  if (!currentGPA || !currentSemester) return;
-
-  let cumulativeCredits = 0;
-  let cumulativeGradePoints = 0;
-
-  const pastSemesters = await findAllSemestersBeforeCurrentSemester({
-    user_id,
-    year: currentSemester.year,
-    term_no: currentSemester.term_no,
-  });
-
-  for (const past of pastSemesters) {
-    const pastGPA = await findGPAByUserIdAndSemesterId(user_id, past.id);
-    if (pastGPA) {
-      cumulativeCredits += pastGPA.total_credits;
-      cumulativeGradePoints += pastGPA.total_grade_points;
-    }
-  }
-
-  cumulativeCredits += currentGPA.total_credits;
-  cumulativeGradePoints += currentGPA.total_grade_points;
-
-  await editGPA(semester_id, user_id, {
-    cum_gpa:
-      cumulativeCredits > 0
-        ? parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2))
-        : 0,
-  });
-
-  const laterSemesters = await getSemesterAfterCurrentSemester(
-    semester_id,
-    user_id,
-  );
-  if (!laterSemesters) return;
-
-  for (const futureSem of laterSemesters) {
-    const futureGPA = await findGPAByUserIdAndSemesterId(user_id, futureSem.id);
-    if (!futureGPA) continue;
-
-    cumulativeCredits += futureGPA.total_credits;
-    cumulativeGradePoints += futureGPA.total_grade_points;
-
-    await editGPA(futureSem.id, user_id, {
-      cum_gpa:
-        cumulativeCredits > 0
-          ? parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2))
-          : 0,
-    });
-  }
-};
-
-export const calculateGPA = async (semester_id: string, user_id: string) => {
-  const semester = await getSemesterById(user_id, { id: semester_id });
-
-  if (!semester.courses) {
-    return;
-  }
-
-  let total_grade_points = 0;
-  let total_credits = 0;
-  for (const course of semester.courses) {
-    total_credits += course.credit;
-    total_grade_points +=
-      (course.grade_point ?? gradePointMap[course.grade]) * course.credit;
-  }
-
-  await editGPA(semester_id, user_id, {
-    total_credits,
-    total_grade_points,
-    gpa:
-      total_credits > 0
-        ? parseFloat((total_grade_points / total_credits).toFixed(2))
-        : 0,
-  });
-};
+}) => prisma.gPA.create({ data });

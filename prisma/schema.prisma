@@ -36,6 +36,14 @@ enum CourseType {
   FREE_ELECTIVE
 }
 
+enum AcademicTaskType {
+  ASSIGNMENT
+  EXAM
+  QUIZ
+  PROJECT
+  OTHER
+}
+
 model User {
   id         String   @id @default(uuid())
   name       String
@@ -48,6 +56,9 @@ model User {
   gpa       GPA[]
   chat_logs ChatLog[]
   password_reset_tokens PasswordResetToken[]
+  refresh_sessions      RefreshSession[]
+  degree_requirements   DegreeRequirement[]
+  import_operations     ImportOperation[]
 }
 
 model Semester {
@@ -78,11 +89,74 @@ model Course {
   credit      Int
   type        Plan
   created_at  DateTime   @default(now())
+  course_code String?
+  instructor  String?
+  notes       String?
 
   semester_id String
   semester    Semester @relation(fields: [semester_id], references: [id], onDelete: Cascade)
 
+  requirement_id String?
+  requirement    DegreeRequirement? @relation(fields: [requirement_id], references: [id], onDelete: SetNull)
+  meetings         CourseMeeting[]
+  tasks            AcademicTask[]
+  prerequisites    CoursePrerequisite[] @relation("CoursePrerequisites")
+  prerequisite_for CoursePrerequisite[] @relation("RequiredCourse")
+
   @@index([semester_id])
+  @@index([requirement_id])
+}
+
+model CourseMeeting {
+  id           String @id @default(uuid())
+  weekday      Int
+  start_minute Int
+  end_minute   Int
+  location     String?
+  course_id    String
+  course       Course @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@index([course_id])
+}
+
+model AcademicTask {
+  id                      String           @id @default(uuid())
+  title                   String
+  type                    AcademicTaskType
+  due_at                  DateTime
+  notes                   String?
+  is_complete             Boolean          @default(false)
+  reminder_offset_minutes Int?             @default(1440)
+  created_at              DateTime         @default(now())
+  course_id               String
+  course                  Course           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@index([course_id])
+  @@index([due_at])
+}
+
+model CoursePrerequisite {
+  course_id        String
+  prerequisite_id String
+  course           Course @relation("CoursePrerequisites", fields: [course_id], references: [id], onDelete: Cascade)
+  prerequisite     Course @relation("RequiredCourse", fields: [prerequisite_id], references: [id], onDelete: Cascade)
+
+  @@id([course_id, prerequisite_id])
+  @@index([prerequisite_id])
+}
+
+model DegreeRequirement {
+  id               String   @id @default(uuid())
+  name             String
+  required_credits Int
+  color            String?
+  sort_order       Int      @default(0)
+  created_at       DateTime @default(now())
+  user_id          String
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  courses          Course[]
+
+  @@index([user_id])
 }
 
 model GPA {
@@ -92,6 +166,9 @@ model GPA {
   cum_gpa            Float
   total_credits      Int
   total_grade_points Float
+  projected_gpa                Float @default(0)
+  projected_total_credits      Int   @default(0)
+  projected_total_grade_points Float @default(0)
   calculated_at      DateTime @default(now())
 
   user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -158,4 +235,35 @@ model PasswordResetToken {
 
   @@index([user_id])
   @@index([expires_at])
+}
+
+model RefreshSession {
+  id           String    @id @default(uuid())
+  token_hash   String    @unique
+  family_id    String
+  device_info  String?
+  ip_address   String?
+  expires_at   DateTime
+  last_used_at DateTime  @default(now())
+  revoked_at   DateTime?
+  created_at   DateTime  @default(now())
+
+  user_id String
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([family_id])
+  @@index([expires_at])
+}
+
+model ImportOperation {
+  id         String   @id @default(uuid())
+  key        String
+  response   Json
+  created_at DateTime @default(now())
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, key])
+  @@index([created_at])
 }

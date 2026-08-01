@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt.js";
 import createHttpError from "http-errors";
 import logger from "../config/logger.js";
+import { randomUUID } from "node:crypto";
 
 type JwtPayload = {
   user_id: string;
@@ -11,8 +12,20 @@ type JwtPayload = {
 declare module "express-serve-static-core" {
   interface Request {
     user?: JwtPayload;
+    requestId?: string;
   }
 }
+
+export const requestIdMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const supplied = req.get("x-request-id");
+  req.requestId = supplied?.slice(0, 100) || randomUUID();
+  res.setHeader("X-Request-ID", req.requestId);
+  next();
+};
 
 export const authMiddleware = (
   req: Request,
@@ -32,7 +45,7 @@ export const authMiddleware = (
       throw createHttpError.Unauthorized("Invalid authorization format");
     }
 
-    const decoded = verifyToken(token, "access") as JwtPayload;
+    const decoded = verifyToken(token) as JwtPayload;
     req.user = decoded;
     next();
   } catch {

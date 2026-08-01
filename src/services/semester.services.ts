@@ -8,9 +8,9 @@ import {
   findSemestersAfterCurrentSemester,
   updateSemester,
 } from "../repositories/semester.repo.js";
-import { addGPA, calculateCumGPA } from "./gpa.services.js";
+import { recalculateUserGpas } from "./gpa.services.js";
 import logger from "../config/logger.js";
-import { da } from "zod/locales";
+import prisma from "../config/prisma.js";
 
 export const addSemester = async (data: {
   year: number;
@@ -19,28 +19,23 @@ export const addSemester = async (data: {
   user_id: string;
   term_no: number;
 }) => {
-  const semesterExists = await findSemesterByYearAndTermNo({
-    year: data.year,
-    term_no: data.term_no,
-    user_id: data.user_id,
+  const semester = await prisma.$transaction(async (tx) => {
+    const semesterExists = await tx.semester.findFirst({
+      where: {
+        year: data.year,
+        term_no: data.term_no,
+        user_id: data.user_id,
+      },
+    });
+    if (semesterExists) throw createHttpError.Conflict("Semester already exists");
+
+    const created = await tx.semester.create({ data });
+    await recalculateUserGpas(data.user_id, tx);
+    return tx.semester.findUniqueOrThrow({
+      where: { id: created.id },
+      include: { courses: true, gpas: true },
+    });
   });
-
-  if (semesterExists) {
-    throw createHttpError.Conflict("Semester already exists");
-  }
-
-  const semester = await createSemester(data);
-
-  await addGPA({
-    semester_id: semester.id,
-    user_id: data.user_id,
-    gpa: 0,
-    cum_gpa: 0,
-    total_credits: 0,
-    total_grade_points: 0,
-  });
-
-  await calculateCumGPA(semester.id, data.user_id);
 
   logger.info(
     `Semester added: ${data.year} ${data.term} for user ${data.user_id}`,
@@ -88,52 +83,31 @@ export const editSemester = async (data: {
     term_no?: number;
   };
 }) => {
-  const isExisted = await findSemesterById({ id: data.id });
-
-  // Check existence
-  if (!isExisted) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  // Check ownership
-  if (isExisted.user_id !== data.user_id) {
-    throw createHttpError.Forbidden(
-      "You don't have permission to edit this semester",
-    );
-  }
-
-  if (data.data.year !== undefined || data.data.term_no !== undefined) {
-    const year = data.data.year ?? isExisted.year;
-    const termNo = data.data.term_no ?? isExisted.term_no;
-
-    const semesterExists = await findSemesterByYearAndTermNo({
-      year,
-      term_no: termNo,
-      user_id: data.user_id,
+  const semester = await prisma.$transaction(async (tx) => {
+    const existing = await tx.semester.findFirst({
+      where: { id: data.id, user_id: data.user_id },
     });
+    if (!existing) throw createHttpError.NotFound("Semester not found");
 
-    if (semesterExists && semesterExists.id !== data.id) {
-      throw createHttpError.Conflict("Semester already exists");
-    }
-  }
-
-  const semester = await updateSemester(data);
-
-  if (data.data.term_no !== undefined || data.data.year !== undefined) {
-    const allSemesters = await findSemesters({ user_id: data.user_id });
-
-    allSemesters.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.term_no - b.term_no;
+    const year = data.data.year ?? existing.year;
+    const termNo = data.data.term_no ?? existing.term_no;
+    const duplicate = await tx.semester.findFirst({
+      where: {
+        year,
+        term_no: termNo,
+        user_id: data.user_id,
+        id: { not: data.id },
+      },
     });
+    if (duplicate) throw createHttpError.Conflict("Semester already exists");
 
-    if (allSemesters.length > 0) {
-      const semesterId = allSemesters[0]?.id;
-      if (semesterId) {
-        await calculateCumGPA(semesterId, data.user_id);
-      }
-    }
-  }
+    await tx.semester.update({ where: { id: data.id }, data: data.data });
+    await recalculateUserGpas(data.user_id, tx);
+    return tx.semester.findUniqueOrThrow({
+      where: { id: data.id },
+      include: { courses: true, gpas: true },
+    });
+  });
 
   logger.info(
     `Semester edited: ${data.id} for user ${data.user_id} with data: ${JSON.stringify(data.data)}`,
@@ -142,31 +116,15 @@ export const editSemester = async (data: {
 };
 
 export const removeSemester = async (data: { id: string; user_id: string }) => {
-  const isExisted = await findSemesterById({ id: data.id });
-
-  // Check existence
-  if (!isExisted) {
-    throw createHttpError.NotFound("Semester not found");
-  }
-
-  // Check ownership
-  if (isExisted.user_id !== data.user_id) {
-    throw createHttpError.Forbidden(
-      "You don't have permission to delete this semester",
-    );
-  }
-
-  const semesterAfterThis = await getSemesterAfterCurrentSemester(
-    data.id,
-    data.user_id,
-  );
-  const nextSemesterId = semesterAfterThis?.[0]?.id;
-
-  const semester = await deleteSemester(data);
-
-  if (nextSemesterId) {
-    await calculateCumGPA(nextSemesterId, data.user_id);
-  }
+  const semester = await prisma.$transaction(async (tx) => {
+    const existing = await tx.semester.findFirst({
+      where: { id: data.id, user_id: data.user_id },
+    });
+    if (!existing) throw createHttpError.NotFound("Semester not found");
+    const deleted = await tx.semester.delete({ where: { id: data.id } });
+    await recalculateUserGpas(data.user_id, tx);
+    return deleted;
+  });
 
   logger.info(`Semester removed: ${data.id} for user ${data.user_id}`);
   return semester;
