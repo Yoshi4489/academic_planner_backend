@@ -11,6 +11,9 @@ const envSchema = z.object({
   EMAIL_USER: z.string().optional(),
   EMAIL_PASSWORD: z.string().optional(),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+  WEB_PUSH_VAPID_PUBLIC_KEY: z.string().min(20).optional(),
+  WEB_PUSH_VAPID_PRIVATE_KEY: z.string().min(20).optional(),
+  WEB_PUSH_SUBJECT: z.string().default("mailto:support@example.com"),
 });
 
 const parsed = envSchema.safeParse(process.env);

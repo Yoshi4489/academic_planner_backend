@@ -44,6 +44,13 @@ enum AcademicTaskType {
   OTHER
 }
 
+enum NotificationDeliveryStatus {
+  PENDING
+  CLAIMED
+  SENT
+  FAILED
+}
+
 model User {
   id         String   @id @default(uuid())
   name       String
@@ -59,6 +66,7 @@ model User {
   refresh_sessions      RefreshSession[]
   degree_requirements   DegreeRequirement[]
   import_operations     ImportOperation[]
+  push_subscriptions    PushSubscription[]
 }
 
 model Semester {
@@ -130,9 +138,46 @@ model AcademicTask {
   created_at              DateTime         @default(now())
   course_id               String
   course                  Course           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  notification_deliveries NotificationDelivery[]
 
   @@index([course_id])
   @@index([due_at])
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  user_agent String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([user_id])
+}
+
+model NotificationDelivery {
+  id              String                     @id @default(uuid())
+  scheduled_for   DateTime
+  status          NotificationDeliveryStatus @default(PENDING)
+  attempts        Int                        @default(0)
+  available_at    DateTime                   @default(now())
+  claimed_at      DateTime?
+  sent_at         DateTime?
+  last_error      String?
+  created_at      DateTime                   @default(now())
+  updated_at      DateTime                   @updatedAt
+  task_id         String
+  task            AcademicTask               @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  subscription_id String
+  subscription    PushSubscription           @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
+
+  @@unique([task_id, subscription_id, scheduled_for])
+  @@index([status, available_at, scheduled_for])
+  @@index([subscription_id])
 }
 
 model CoursePrerequisite {
